@@ -35,7 +35,7 @@ async function fetchAgrupaciones(electionId: number): Promise<AgrupacionResult[]
             consejeros_obtenidos, obtuvo_intendencia, orden_visualizacion
      FROM agrupaciones
      WHERE eleccion_id = ?
-     ORDER BY COALESCE(orden_visualizacion, 2147483647) ASC, votos DESC`,
+     ORDER BY votos DESC`,
     [electionId]
   );
   return rows.map((row) => ({

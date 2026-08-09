@@ -12,6 +12,7 @@ export interface Eleccion {
   votos_positivos: number | null;
   votos_blanco: number | null;
   votos_nulos: number | null;
+  notas: string | null;
   url_pdf: string | null;
 }
 

@@ -22,13 +22,14 @@ interface EleccionRow extends mysql.RowDataPacket {
   votos_positivos: number | null;
   votos_blanco: number | null;
   votos_nulos: number | null;
+  notas: string | null;
   url_pdf: string | null;
 }
 
 const ELECCION_COLUMNS = `
   id, anio, fecha, elige_intendente, cantidad_concejales, cantidad_consejeros,
   electores_habilitados, total_mesas,
-  votos_positivos, votos_blanco, votos_nulos, url_pdf
+  votos_positivos, votos_blanco, votos_nulos, notas, url_pdf
 `;
 
 function mapEleccion(row: EleccionRow): Eleccion {
@@ -44,6 +45,7 @@ function mapEleccion(row: EleccionRow): Eleccion {
     votos_positivos: row.votos_positivos,
     votos_blanco: row.votos_blanco,
     votos_nulos: row.votos_nulos,
+    notas: row.notas,
     url_pdf: row.url_pdf,
   };
 }

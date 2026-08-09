@@ -27,6 +27,7 @@ export function ElectionHeader({ eleccion }: Props) {
           </div>
         ))}
       </dl>
+      {eleccion.notas && <p className="election-header__nota">{eleccion.notas}</p>}
       <PdfDownload urlPdf={eleccion.url_pdf} />
     </section>
   );
