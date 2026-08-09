@@ -17,17 +17,24 @@ const GENERALES: Array<[string, (e: Eleccion) => string]> = [
 
 export function ElectionHeader({ eleccion }: Props) {
   return (
-    <section aria-labelledby="datos-generales-heading">
-      <h2 id="datos-generales-heading">Datos generales</h2>
-      <dl className="election-header">
+    <section className="datos" aria-labelledby="datos-generales-heading">
+      <h2 id="datos-generales-heading" className="section-title">
+        Datos generales
+      </h2>
+      <dl className="datos__grid">
         {GENERALES.map(([label, format]) => (
-          <div key={label} className="election-header__item">
+          <div key={label} className="datos__cell">
             <dt>{label}</dt>
             <dd>{format(eleccion)}</dd>
           </div>
         ))}
       </dl>
-      {eleccion.notas && <p className="election-header__nota">{eleccion.notas}</p>}
+      {eleccion.notas && (
+        <aside className="datos__nota">
+          <h3 className="datos__nota-title">Contexto histórico</h3>
+          <p className="datos__nota-text">{eleccion.notas}</p>
+        </aside>
+      )}
       <PdfDownload urlPdf={eleccion.url_pdf} />
     </section>
   );

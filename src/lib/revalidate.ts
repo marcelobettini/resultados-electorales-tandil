@@ -67,7 +67,7 @@ export async function revalidateForPayload(payload: RevalidatePayload): Promise<
     years = await getAllElectionYears();
   }
   for (const year of years) {
-    revalidateTag(electionTag(year));
+    revalidateTag(electionTag(year), "max");
   }
-  revalidateTag(LIST_TAG);
+  revalidateTag(LIST_TAG, "max");
 }

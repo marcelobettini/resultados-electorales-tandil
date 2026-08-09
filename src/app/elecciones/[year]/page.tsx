@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getEleccionByYear } from "@/lib/queries/elections";
+import { formatDate } from "@/lib/format";
 import { ElectionHeader } from "@/components/election-header";
 import { ElectionResults } from "@/components/election-results";
 
@@ -27,12 +28,24 @@ export default async function ElectionPage({ params }: Props) {
   const eleccion = await getEleccionByYear(anio);
   if (!eleccion) notFound();
 
+  const fecha = eleccion.fecha ? formatDate(eleccion.fecha) : null;
+
   return (
-    <main id="main" className="page">
+    <main id="main" className="page page--election">
       <p className="page__back">
-        <Link href="/">← Volver al histórico</Link>
+        <Link href="/">← Histórico</Link>
       </p>
-      <h1>Elecciones {eleccion.anio}</h1>
+      <header className="detail-head">
+        <p className="detail-head__eyebrow">
+          <span className="sello sello--ballot sello--check" aria-hidden="true" />
+          Escrutinio definitivo
+        </p>
+        <h1 className="detail-head__year">
+          <span className="sr-only">Elecciones </span>
+          {eleccion.anio}
+        </h1>
+        {fecha && <p className="detail-head__meta">Elecciones municipales · {fecha}</p>}
+      </header>
       <ElectionHeader eleccion={eleccion} />
       <ElectionResults eleccion={eleccion} />
     </main>

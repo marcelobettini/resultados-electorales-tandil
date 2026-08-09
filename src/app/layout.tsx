@@ -1,6 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Archivo, IBM_Plex_Mono } from "next/font/google";
 import "@/styles/globals.css";
 import { RegisterSW } from "@/components/register-sw";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-plexmono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -12,17 +28,19 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#14532d",
+  themeColor: "#0B4EA2",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es">
+    <html lang="es" className={`${archivo.variable} ${plexMono.variable}`}>
       <body>
         <a className="skip-link" href="#main">
           Saltar al contenido principal
         </a>
+        <SiteHeader />
         {children}
+        <SiteFooter />
         <RegisterSW />
       </body>
     </html>

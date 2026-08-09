@@ -11,12 +11,12 @@ export function ElectionList({ elecciones }: Props) {
     <nav aria-label="Histórico de elecciones" className="election-list-wrap">
       <ul className="election-list">
         {elecciones.map((eleccion) => (
-          <li key={eleccion.anio}>
+          <li key={eleccion.anio} className="election-list__item">
             <Link href={`/elecciones/${eleccion.anio}`} className="election-list__link">
-              <span className="election-list__year">Elecciones {eleccion.anio}</span>
-              {eleccion.fecha && (
-                <span className="election-list__date">{formatDate(eleccion.fecha)}</span>
-              )}
+              <span className="election-list__year">{eleccion.anio}</span>
+              <span className="election-list__date">
+                {eleccion.fecha ? formatDate(eleccion.fecha) : "Fecha no registrada"}
+              </span>
             </Link>
           </li>
         ))}

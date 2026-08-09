@@ -7,14 +7,17 @@ export const metadata: Metadata = {
 
 export default function OfflinePage() {
   return (
-    <main className="page">
-      <h1>Sin conexión</h1>
-      <p>
-        No hay conexión a internet en este momento. Revisá tu red y volvé a intentarlo; las
-        elecciones que ya visitaste siguen disponibles sin conexión.
-      </p>
+    <main id="main" className="page">
+      <section className="hero">
+        <p className="hero__eyebrow">Sin conexión</p>
+        <h1>Sin conexión</h1>
+        <p className="hero__intro">
+          No hay conexión a internet en este momento. Revisá tu red y volvé a intentarlo; las
+          elecciones que ya visitaste siguen disponibles sin conexión.
+        </p>
+      </section>
       <p className="page__back">
-        <Link href="/">Volver al inicio</Link>
+        <Link href="/">← Volver al inicio</Link>
       </p>
     </main>
   );

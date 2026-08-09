@@ -23,7 +23,14 @@ export function VotesBarChart({ items }: Props) {
         margin={{ top: 0, right: 52, bottom: 0, left: 0 }}
       >
         <XAxis type="number" hide />
-        <YAxis type="category" dataKey="nombre" width={0} tick={false} axisLine={false} tickLine={false} />
+        <YAxis
+          type="category"
+          dataKey="nombre"
+          width={0}
+          tick={false}
+          axisLine={false}
+          tickLine={false}
+        />
         <Bar dataKey="votos" radius={[0, 4, 4, 0]} isAnimationActive={false}>
           {data.map((d) => (
             <Cell key={d.nombre} fill={d.color} />
@@ -31,7 +38,7 @@ export function VotesBarChart({ items }: Props) {
           <LabelList
             dataKey="votos"
             position="right"
-            fill="#1a1a1a"
+            fill="#161a22"
             formatter={(value) => formatNumber(Number(value))}
           />
         </Bar>

@@ -21,37 +21,41 @@ export interface DonutSegment {
 }
 
 export const PALETTE = [
-  "#4E79A7",
-  "#F28E2B",
-  "#E15759",
-  "#76B7B2",
-  "#59A14F",
-  "#EDC948",
-  "#B07AA1",
-  "#FF9DA7",
-  "#9C755F",
-  "#BAB0AC",
-  "#86BCB6",
-  "#D37295",
+  "#0B4EA2",
+  "#B23B2E",
+  "#5B2C86",
+  "#1F7A6D",
+  "#C79A2E",
+  "#3A5A8C",
+  "#8C2F4F",
+  "#2E7D94",
+  "#7A6A1F",
+  "#54607A",
+  "#8A6D3B",
+  "#6E4E8E",
 ];
 
-export const OTROS_COLOR = "#6B7280";
+export const OTROS_COLOR = "#7B828C";
 
 export function assignColor(index: number): string {
   return PALETTE[index % PALETTE.length];
 }
 
-/** Construye los ítems para el gráfico de votos de la elección, con color por frente.
- *  Excluye agrupaciones sin votos: no hay nada que graficar. */
+/** Construye los ítems para el gráfico de votos de la elección, con color por frente
+ *  asignado por orden de votos (la lista más votada lleva el azul institucional).
+ *  Excluye agrupaciones sin votos: no hay nada que graficar. El orden de salida
+ *  preserva el de las agrupaciones originales. */
 export function buildChartItems(agrupaciones: AgrupacionResult[]): ChartItem[] {
-  return agrupaciones
-    .filter((a) => (a.votos ?? 0) > 0)
-    .map((a, i) => ({
-      nombre: a.nombre,
-      votos: a.votos ?? 0,
-      porcentaje: a.porcentaje,
-      color: assignColor(i),
-    }));
+  const withVotes = agrupaciones.filter((a) => (a.votos ?? 0) > 0);
+  const ranked = [...withVotes].sort((a, b) => (b.votos ?? 0) - (a.votos ?? 0));
+  const colorById = new Map<number, string>();
+  ranked.forEach((a, i) => colorById.set(a.id, assignColor(i)));
+  return withVotes.map((a) => ({
+    nombre: a.nombre,
+    votos: a.votos ?? 0,
+    porcentaje: a.porcentaje,
+    color: colorById.get(a.id) ?? OTROS_COLOR,
+  }));
 }
 
 /**

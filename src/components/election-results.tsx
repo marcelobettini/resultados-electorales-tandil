@@ -68,12 +68,14 @@ export async function ElectionResults({ eleccion }: Props) {
 
   return (
     <section className="election-results" aria-labelledby="resultados-heading">
-      <h2 id="resultados-heading">Resultados</h2>
+      <h2 id="resultados-heading" className="section-title">
+        Resultados
+      </h2>
       <ResultsTable agrupaciones={agrupaciones} offices={offices} />
 
       {items.length > 0 && (
         <figure className="election-charts">
-          <figcaption>Comparación de votos</figcaption>
+          <figcaption className="election-charts__title">Comparación de votos</figcaption>
           <div className="election-charts__body">
             <div aria-hidden="true" className="election-charts__viz">
               {useBars ? <VotesBarChart items={items} /> : <VotesDonut items={items} />}
@@ -85,7 +87,9 @@ export async function ElectionResults({ eleccion }: Props) {
       )}
 
       <section className="elected-section" aria-labelledby="electos-heading">
-        <h3 id="electos-heading">Personas electas</h3>
+        <h3 id="electos-heading" className="section-title">
+          Personas electas
+        </h3>
         {electosPorCargo.map(({ office, electos }) => (
           <div key={office.code} className="elected-cargo">
             <h4>{office.name}</h4>
