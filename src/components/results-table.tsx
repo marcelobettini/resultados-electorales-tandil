@@ -67,15 +67,7 @@ export function ResultsTable({ agrupaciones, offices }: Props) {
             const esGanadora = agrupacion.id === ganadoraId;
             return (
               <tr key={agrupacion.id} className={esGanadora ? "results-table__winner" : undefined}>
-                <td>
-                  {esGanadora && (
-                    <>
-                      <span className="sello sello--ballot sello--check" aria-hidden="true" />
-                      <span className="sr-only">Ganó la intendencia. </span>
-                    </>
-                  )}
-                  {displayValue(agrupacion.numero_lista)}
-                </td>
+                <td>{displayValue(agrupacion.numero_lista)}</td>
                 <th scope="row">{agrupacion.nombre}</th>
                 <td className="num">{formatNumber(agrupacion.votos)}</td>
                 <td className="num results-table__pct">
