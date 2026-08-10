@@ -42,3 +42,57 @@ export interface Electo {
   orden: number | null;
   agrupacion_nombre: string | null;
 }
+
+export type CategoriaId =
+  | "ganador_eleccion"
+  | "ganador_intendencia"
+  | "diferencia_primero_segundo"
+  | "ranking_top_n"
+  | "totales_eleccion"
+  | "bancas_por_partido"
+  | "personas_electas_cargo"
+  | "serie_total_votos"
+  | "participacion";
+
+export type CargoLocal = "intendente" | "concejales" | "consejeros_escolares";
+
+export type MotivoRechazo =
+  | "no_entendida"
+  | "ambito_no_local"
+  | "paso"
+  | "cargo_no_local"
+  | "comparacion_partido_entre_anios";
+
+export type TipoRespuesta =
+  | "respuesta"
+  | "fuera_de_alcance"
+  | "sin_datos"
+  | "no_entendida"
+  | "categoria_no_disponible"
+  | "error_sistema";
+
+export interface IntentoConsulta {
+  valido: boolean;
+  categoria: CategoriaId | null;
+  cargo: CargoLocal | null;
+  anio: number | null;
+  // null + es_ultima_eleccion=true → se resuelve a MAX(anio) en la capa de consultas
+  es_ultima_eleccion: boolean;
+  limite: number | null;
+  motivo_rechazo: MotivoRechazo | null;
+}
+
+export interface Interpretacion {
+  // anio ya resuelto en la capa de consultas, nunca null en la respuesta
+  anio: number;
+  categoria: CategoriaId;
+  cargo: CargoLocal | null;
+}
+
+export interface Respuesta {
+  tipo: TipoRespuesta;
+  texto: string;
+  interpretacion: Interpretacion | null;
+  advertencia: string | null;
+  desde_cache: boolean;
+}

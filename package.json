@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test tests/e2e/accessibility.spec.ts",
     "db:import": "echo 'La base resultados_tandil se administra por PHPMyAdmin (MAMP, puerto 8889); el esquema real esta exportado en db_schema.sql'"

@@ -1,0 +1,97 @@
+# Quickstart / Guía de Validación
+
+**Branch**: `002-preguntas-lenguaje-natural` | **Date**: 2026-08-10
+
+Guía para validar de punta a punta el cuadro de preguntas en lenguaje natural. Los detalles técnicos (catálogo, plantillas, adaptador) pertenecen a `tasks.md` y a la implementación; aquí solo escenarios verificables.
+
+**Referencias**: [spec](./spec.md) · [data model](./data-model.md) · [API preguntar](./contracts/ask-api.md) · [contrato interpretación](./contracts/llm-intent-contract.md) · [reglas](./contracts/interpretation-rules.md) · [research](./research.md)
+
+## Prerrequisitos
+
+- Node 20 LTS.
+- MySQL local (MAMP, `localhost:8889`), base **`resultados_tandil`** cargada con el histórico real (requisito ya cubierto por el feature 001).
+- Variables de entorno nuevas (sumar a `.env` / `.env.example`):
+  - `LLM_API_KEY` — credencial del servicio de interpretación (solo servidor, nunca al navegador).
+  - `LLM_MODEL` — modelo (default clase mini compatible con structured outputs).
+  - `ASK_INTERPRETER_MODE` — `live` (default) o `mock` (tests/dev sin gasto ni red).
+  - `ASK_RATE_LIMIT_MAX` / `ASK_RATE_LIMIT_WINDOW_MS` — límite de ritmo (default 10 / 60 000).
+  - `ASK_CACHE_TTL_MS` / `ASK_CACHE_MAX_ENTRIES` — memoria temporal (default 600 000 / 200).
+  - En `mock`, `LLM_API_KEY` puede estar vacía.
+
+## Setup
+
+```bash
+npm install
+cp .env.example .env    # completar credenciales; ASK_INTERPRETER_MODE=mock para validación local sin LLM
+npm run dev             # Next.js en desarrollo
+```
+
+## Escenarios de validación
+
+### 1. Flujo principal (US1, FR-001/FR-002/FR-009/FR-011)
+
+En `/` debe verse un único cuadro de preguntas con etiqueta visible y, debajo, el área de respuesta. Probar:
+
+- "¿Qué diferencia de votos hubo entre el primero y el segundo en 2001?" → texto con las cifras oficiales, línea "Interpreté: …" con año, categoría y cargo; sin acumular historial.
+- "¿Quién ganó la última elección?" → responde con el año **más reciente** y la línea "Interpreté: …" lo indica (sin año fijo).
+- Enviar una pregunta nueva → la respuesta anterior **se reemplaza por completo** (nunca dos respuestas apiladas).
+- Repetir la misma pregunta → respuesta idéntica y **más rápida** (memoria temporal, `desde_cache`).
+- Cruzar las cifras con el PDF oficial (`url_pdf` de esa elección): coinciden 1:1.
+
+### 2. Sin año (US2, FR-011, SC-010)
+
+- "¿Quién ganó?" (sin año) → se resuelve a la elección más reciente con datos.
+- Registrar una elección nueva en la BD y repetir la pregunta tras expirar la memoria temporal → el año resuelto cambia solo, sin tocar configuración.
+
+### 3. Explicaciones honestas (US3, FR-005/006/007/008)
+
+Batería de preguntas fuera de alcance — cada una recibe su mensaje, **nunca** una cifra:
+
+- Cargo provincial/nacional: "¿Quién ganó la gobernación?" → explicación de alcance local.
+- PASO: "¿Cómo fue el resultado de las PASO?" → solo se publican generales.
+- Otra localidad: "¿Quién ganó en Azul?" → alcance solo Tandil.
+- Comparación del mismo partido entre años: "¿Cómo le fue a la UCR desde 1963?" → no comparable entre elecciones.
+- Categoría reconocida no implementada: "¿Cuál fue el porcentaje de participación en 2023?" → "esta consulta todavía no está disponible".
+- Pregunta confusa: "¿Qué tan azul está el cielo?" → "no entendí, reformulá".
+- Año sin datos: "¿Quién ganó en 1990?" → "No hubo elección municipal en Tandil en 1990".
+- Año sin un cargo: "¿Quién ganó la intendencia en 2015?" (año sin intendente) → indica que ese año no se eligió ese cargo.
+
+### 4. Casos límite de datos (FR-010, FR-012)
+
+- Empate entre el primero y el segundo → se reporta explícitamente en la advertencia; no se elige un "segundo" arbitrario.
+- Elección antigua con `porcentaje` NULL (pre-2003) o con `total_votos`/padrón NULL → los huecos se mencionan en la advertencia, no se omiten ni se completan.
+- Partido con 0 votos literal vs. partido sin dato → el 0 es un resultado válido; el NULL se señala.
+- Año 1963 y patrón bienal: las respuestas usan los datos tal cual están (sin reglas en tiempo de consulta; el patrón no se marca como anomalía).
+
+### 5. Límite de ritmo y validación de forma (FR-017, FR-020)
+
+- Pregunta vacía o solo espacios → no se envía; validación en el campo ("Escribí una pregunta para poder responder").
+- Enviar > 10 preguntas en un minuto desde la misma IP (p. ej. con `curl`) → `429` "demasiadas preguntas"; el uso normal nunca se ve afectado.
+
+### 6. Accesibilidad WCAG 2.2 AA (US4, FR-014, SC-005)
+
+- Auditoría automatizada: `npm run test:a11y` (axe/Playwright) sobre `/` con el cuadro de preguntas y sus estados.
+- Recorrido manual con teclado + lector de pantalla: el campo está etiquetado; la carga, la respuesta y cada estado de error se anuncian automáticamente en la región de actualización dinámica.
+- Contraste ≥ 4.5:1 en el texto del cuadro y de los mensajes.
+
+### 7. Modo sin conexión (US4, FR-015, SC-008)
+
+- DevTools → Offline: el cuadro queda deshabilitado con mensaje claro; el histórico, tablas y PDFs siguen funcionando (regresión cero).
+- Volver a online → el cuadro se rehabilita solo.
+
+### 8. Estados de error del sistema (FR-013)
+
+- Con el servicio de interpretación caído (o clave inválida en `live`) → estado claro de "error del sistema", sin respuestas vacías ni inventadas.
+- Con la BD caída → mismo tratamiento.
+
+## Criterios de éxito medibles (resumen)
+
+- 95% de las ~10 preguntas del conjunto de referencia respondidas correcta y visiblemente en < 5 s (SC-001).
+- 100% de las cifras = escrutinio definitivo de la base (SC-002).
+- 100% de las preguntas del conjunto reciben respuesta o explicación coherente (SC-003); 100% de las fuera de alcance explican y jamás inventan (SC-004).
+- 100% de los estados anunciados al AT, sin errores de prioridad crítica en axe (SC-005).
+- 100% de los envíos reemplazan la respuesta anterior (SC-006).
+- Ritmo normal nunca rechazado; envío masivo limitado (SC-007).
+- Offline: cuadro deshabilitado, resto intacto (SC-008).
+- Pregunta repetida servida desde memoria sin reprocesar (SC-009).
+- Elección nueva → "última elección" la resuelve sola (SC-010).
