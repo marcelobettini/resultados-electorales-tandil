@@ -77,9 +77,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(ERROR_RATE_LIMIT, { status: 429 });
     }
 
-    const cacheada = getRespuestaCacheada(pregunta);
+    const cacheada = getRespuestaCacheada(pregunta) as Respuesta | null;
     if (cacheada !== null) {
-      return NextResponse.json({ ok: true, respuesta: cacheada });
+      return NextResponse.json({
+        ok: true,
+        respuesta: { ...cacheada, desde_cache: true },
+      });
     }
 
     const intento = await getInterpreter().interpretar(pregunta);

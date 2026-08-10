@@ -10,6 +10,7 @@ democráticas de 1973 y 1983).
 - **PWA** instalable (Serwist) con modo offline.
 - **WCAG 2.2 AA**: tablas HTML como fuente de verdad, gráficos SVG complementarios ocultos a lectores de pantalla, resumen narrativo.
 - Funciona **100% local** con el MySQL de PHPMyAdmin (MAMP).
+- **Preguntas en lenguaje natural**: un cuadro en la portada responde en español sobre el escrutinio definitivo (taxonomía cerrada, plantillas determinísticas, línea "Interpreté: …", rate limit + caché, WCAG/offline).
 
 ## Setup local
 
@@ -17,7 +18,7 @@ Requisitos: Node 20 LTS y MAMP con PHPMyAdmin en `localhost:8889`.
 
 ```bash
 npm install
-cp .env.example .env     # configurar MySQL local e ISR_SECRET
+cp .env.example .env     # configurar MySQL local, ISR_SECRET y el feature de preguntas
 ```
 
 La base `resultados_tandil` se crea/administra por PHPMyAdmin (MAMP). El esquema real está
@@ -26,6 +27,20 @@ exportado en `db_schema.sql`. Verificación de carga:
 ```sql
 SELECT anio FROM elecciones ORDER BY anio;   -- 1963 → 2025, sin años de facto
 ```
+
+Variables de entorno del cuadro de preguntas (feature 002):
+
+- `ASK_INTERPRETER_MODE`: `live` (default) o `mock`. En `live` la interpretación la hace el servicio
+  externo (requiere `LLM_API_KEY`); en `mock` responde las preguntas del conjunto de referencia sin
+  gasto ni red, ideal para tests unitarios, e2e y validación local.
+- `LLM_API_KEY`: clave del servicio de interpretación (OpenAI). **Solo servidor**: nunca llega al
+  navegador ni al repo; en modo `mock` puede quedar vacía.
+- `LLM_MODEL`, `ASK_RATE_LIMIT_*` y `ASK_CACHE_*`: opcionales; valores por defecto en `.env.example`.
+
+**Producción**: la plataforma (incluido el cuadro de preguntas en lenguaje natural) **solo
+lee** —nunca escribe—, por lo que se recomienda crear un usuario MySQL de **solo lectura**
+(`GRANT SELECT ON resultados_tandil.*`) y apuntarlo desde `DB_USER`/`DB_PASSWORD` en lugar
+del `root` local.
 
 ## Ejecutar
 
@@ -73,6 +88,23 @@ Body (raw JSON):
 { "refresh_all": true }
 ```
 
+## Preguntas en lenguaje natural
+
+Un único cuadro en la portada ("Hacé una pregunta sobre los resultados electorales…") responde
+preguntas en español sobre el escrutinio definitivo a través de `POST /api/preguntar`:
+
+- **Taxonomía cerrada**: un servicio externo de interpretación (OpenAI Chat Completions, structured
+  output, `temperature: 0`) traduce la pregunta a una de las categorías fijas del catálogo, que se
+  mapean a consultas SQL **predefinidas y parametrizadas** contra la base de solo lectura. El modelo
+  nunca genera SQL ni cifras: los números salen siempre de la base.
+- **Plantillas determinísticas**: la respuesta se renderiza en el servidor a partir de los datos, con
+  advertencias explícitas (empate, huecos NULL) y la línea **"Interpreté: …"** con año, categoría y
+  cargo, para que el ciudadano audite qué entendió el sistema.
+- **Rate limit + memoria temporal**: hasta 10 preguntas por minuto por visitante y caché LRU de
+  respuestas idénticas en la instancia del servidor (repetir una pregunta se sirve sin reprocesar).
+- **WCAG 2.2 AA + offline**: los estados se anuncian con `role="status"`; sin conexión el cuadro se
+  deshabilita con un mensaje claro sin afectar el resto de la plataforma.
+
 ## Scripts
 
 | Comando             | Descripción                                          |
@@ -88,6 +120,8 @@ Body (raw JSON):
 
 ## Guía de validación
 
-Los 7 escenarios verificables (lista cronológica, detalle, gráficos, huecos de datos,
+Los 7 escenarios verificables del feature 001 (lista cronológica, detalle, gráficos, huecos de datos,
 accesibilidad, PWA, revalidación) están documentados en
 [`specs/001-resultados-electorales-tandil/quickstart.md`](./specs/001-resultados-electorales-tandil/quickstart.md).
+La guía de validación del cuadro de preguntas en lenguaje natural (feature 002) está en
+[`specs/002-preguntas-lenguaje-natural/quickstart.md`](./specs/002-preguntas-lenguaje-natural/quickstart.md).

@@ -12,6 +12,7 @@ const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODELO_DEFECTO = "gpt-4o-mini";
 const SEED = 42;
 const ESPERA_RETRY_MS = 500;
+const TIMEOUT_FETCH_MS = 15_000;
 
 class LlmError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -72,6 +73,7 @@ export class LiveInterpreter implements Interpreter {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_FETCH_MS),
       });
     } catch {
       throw new LlmError("error de red");
