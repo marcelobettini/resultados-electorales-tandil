@@ -122,16 +122,16 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 
 ### Tests for User Story 3 (TDD - must FAIL before implementation) ⚠️
 
-- [ ] T033 [P] [US3] Unit tests for rejection mapping in `tests/unit/rechazo.test.ts`: cada `motivo_rechazo` → `tipo` y texto esperado (`no_entendida`, `ambito_no_local`, `paso`, `cargo_no_local`, `comparacion_partido_entre_anios`, `categoria_no_disponible`, `sin_datos`)
-- [ ] T034 [P] [US3] Integration tests for rejection battery in `tests/integration/rechazo.test.ts` (fake interpreter): gobernación/PASO/Azul/evolución de la UCR/confusa/año sin datos → explicaciones correctas, cero cifras
-- [ ] T035 [P] [US3] E2E test for out-of-scope battery in `tests/e2e/fuera-de-alcance.spec.ts` (mock): cada pregunta recibe su mensaje sin números
+- [x] T033 [P] [US3] Unit tests for rejection mapping in `tests/unit/rechazo.test.ts`: cada `motivo_rechazo` → `tipo` y texto esperado (`no_entendida`, `ambito_no_local`, `paso`, `cargo_no_local`, `comparacion_partido_entre_anios`, `categoria_no_disponible`, `sin_datos`)
+- [x] T034 [P] [US3] Integration tests for rejection battery in `tests/integration/rechazo.test.ts` (fake interpreter): gobernación/PASO/Azul/evolución de la UCR/confusa/año sin datos → explicaciones correctas, cero cifras
+- [x] T035 [P] [US3] E2E test for out-of-scope battery in `tests/e2e/fuera-de-alcance.spec.ts` (mock): cada pregunta recibe su mensaje sin números
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Extend `docs/interpretacion/reglas.md` with `motivo_rechazo` vocabulary and one example each (nacional/provincial, PASO, otra localidad, comparación entre años, confusa) and confirm `participacion` (`implemented:false`) triggers `categoria_no_disponible` (FR-005)
-- [ ] T037 [P] [US3] Implement rejection message templates in `src/lib/respuestas/templates.ts` for every `tipo` (mensajes honestos, sin cifras, FR-006/FR-007/FR-008)
-- [ ] T038 [US3] Implement `sin_datos` detection in `src/lib/consultas/` (`years.ts`/`catalog.ts`): año inexistente o cargo no elegido en ese año (p. ej. intendente en año de solo concejales) → `sin_datos`, y wire `motivo_rechazo` → `tipo` in `src/lib/respuestas/render.ts`
-- [ ] T039 [US3] Wire `no_entendida` and `categoria_no_disponible` handling end-to-end in `src/app/api/preguntar/route.ts` (responses 200 con `respuesta.tipo`, nunca 500 para rechazos válidos)
+- [x] T036 [US3] Extend `docs/interpretacion/reglas.md` with `motivo_rechazo` vocabulary and one example each (nacional/provincial, PASO, otra localidad, comparación entre años, confusa) and confirm `participacion` (`implemented:false`) triggers `categoria_no_disponible` (FR-005)
+- [x] T037 [P] [US3] Implement rejection message templates in `src/lib/respuestas/templates.ts` for every `tipo` (mensajes honestos, sin cifras, FR-006/FR-007/FR-008)
+- [x] T038 [US3] Implement `sin_datos` detection in `src/lib/consultas/` (`years.ts`/`catalog.ts`): año inexistente o cargo no elegido en ese año (p. ej. intendente en año de solo concejales) → `sin_datos`, y wire `motivo_rechazo` → `tipo` in `src/lib/respuestas/render.ts`
+- [x] T039 [US3] Wire `no_entendida` and `categoria_no_disponible` handling end-to-end in `src/app/api/preguntar/route.ts` (responses 200 con `respuesta.tipo`, nunca 500 para rechazos válidos)
 
 **Checkpoint**: All user stories should now be independently functional
 
