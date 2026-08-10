@@ -101,14 +101,14 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 
 ### Tests for User Story 2 (TDD - must FAIL before implementation) ⚠️
 
-- [ ] T028 [P] [US2] Unit tests for year resolution in `tests/unit/years.test.ts`: `es_ultima_eleccion` → `MAX(anio)` con datos, pregunta sin año, año inexistente → `null`
-- [ ] T029 [P] [US2] Integration test in `tests/integration/ultima-eleccion.test.ts`: "¿Quién ganó la última elección?" contra BD local devuelve el año más reciente en `interpretacion.anio`; prueba SC-010 (insertar elección nueva → resuelve el año nuevo sin cambio de configuración)
-- [ ] T030 [P] [US2] E2E test in `tests/e2e/ultima-eleccion.spec.ts` (mock): "¿Quién ganó la última elección?" → "Interpreté: …" muestra el año más reciente
+- [x] T028 [P] [US2] Unit tests for year resolution in `tests/unit/years.test.ts`: `es_ultima_eleccion` → `MAX(anio)` con datos, pregunta sin año, año inexistente → `null`
+- [x] T029 [P] [US2] Integration test in `tests/integration/ultima-eleccion.test.ts`: "¿Quién ganó la última elección?" contra BD local devuelve el año más reciente en `interpretacion.anio`; prueba SC-010 (insertar elección nueva → resuelve el año nuevo sin cambio de configuración)
+- [x] T030 [P] [US2] E2E test in `tests/e2e/ultima-eleccion.spec.ts` (mock): "¿Quién ganó la última elección?" → "Interpreté: …" muestra el año más reciente
 
 ### Implementation for User Story 2
 
-- [ ] T031 [US2] Extend vocabulary in `docs/interpretacion/reglas.md` and `src/lib/interpretacion/prompt.ts` for "última elección"/"más reciente"/preguntas sin año → `es_ultima_eleccion:true` (FR-011)
-- [ ] T032 [US2] Ensure resolver returns the most recent year and render shows it: verify `src/lib/consultas/years.ts` `MAX(anio)` and `src/lib/respuestas/render.ts` always emit a **resolved** `interpretacion.anio` (never `null` in the response)
+- [x] T031 [US2] Extend vocabulary in `docs/interpretacion/reglas.md` and `src/lib/interpretacion/prompt.ts` for "última elección"/"más reciente"/preguntas sin año → `es_ultima_eleccion:true` (FR-011)
+- [x] T032 [US2] Ensure resolver returns the most recent year and render shows it: verify `src/lib/consultas/years.ts` `MAX(anio)` and `src/lib/respuestas/render.ts` always emit a **resolved** `interpretacion.anio` (never `null` in the response)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
