@@ -145,14 +145,14 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 
 ### Tests for User Story 4 (TDD - must FAIL before implementation) ⚠️
 
-- [ ] T040 [P] [US4] Component a11y test in `tests/component/question-box.a11y.test.tsx` (axe + RTL): estados `cargando/respuesta/error/fuera_de_alcance` anunciados en `role="status"`, label asociado, sin violaciones críticas
-- [ ] T041 [P] [US4] Extend E2E a11y audit in `tests/e2e/accessibility.spec.ts` (ya existe para el feature 001): correr `npm run test:a11y` incluyendo `/` con QuestionBox y sus estados (SC-005)
-- [ ] T042 [P] [US4] E2E offline test in `tests/e2e/offline.spec.ts` (Playwright emulación offline): cuadro deshabilitado con mensaje claro; histórico/tablas/PDF siguen funcionando (SC-008)
+- [x] T040 [P] [US4] Component a11y test in `tests/component/question-box.a11y.test.tsx` (axe + RTL): estados `cargando/respuesta/error/fuera_de_alcance` anunciados en `role="status"`, label asociado, sin violaciones críticas
+- [x] T041 [P] [US4] Extend E2E a11y audit in `tests/e2e/accessibility.spec.ts` (ya existe para el feature 001): correr `npm run test:a11y` incluyendo `/` con QuestionBox y sus estados (SC-005)
+- [x] T042 [P] [US4] E2E offline test in `tests/e2e/offline.spec.ts` (Playwright emulación offline): cuadro deshabilitado con mensaje claro; histórico/tablas/PDF siguen funcionando (SC-008)
 
 ### Implementation for User Story 4
 
-- [ ] T043 [US4] Implement offline detection in `src/components/question-box.tsx`: `navigator.onLine` + listeners `online`/`offline`, campo y botón `disabled` con mensaje claro (FR-015), re-habilitación automática al volver online
-- [ ] T044 [US4] Ensure WCAG 2.2 AA in `src/components/question-box.tsx`: `<label htmlFor>` + `aria-describedby`, resultado y TODOS los estados en la región `role="status"`/aria-live, `aria-busy` en carga, navegación por teclado, contraste ≥4.5:1 (FR-014)
+- [x] T043 [US4] Implement offline detection in `src/components/question-box.tsx`: `navigator.onLine` + listeners `online`/`offline`, campo y botón `disabled` con mensaje claro (FR-015), re-habilitación automática al volver online
+- [x] T044 [US4] Ensure WCAG 2.2 AA in `src/components/question-box.tsx`: `<label htmlFor>` + `aria-describedby`, resultado y TODOS los estados en la región `role="status"`/aria-live, `aria-busy` en carga, navegación por teclado, contraste ≥4.5:1 (FR-014)
 
 **Checkpoint**: All user stories should now be independently functional
 

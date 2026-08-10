@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, FormEvent, JSX } from "react";
 import type { Respuesta } from "@/lib/types";
 
@@ -9,6 +9,8 @@ const PLACEHOLDER = "Hacé una pregunta sobre los resultados electorales…";
 const MENSAJE_VALIDACION = "Escribí una pregunta para poder responder.";
 const MENSAJE_ERROR =
   "Ocurrió un error al procesar tu pregunta. Volvé a intentar en unos minutos.";
+const MENSAJE_OFFLINE =
+  "Estás sin conexión. Volvé a conectarte para hacer una pregunta.";
 
 interface PreguntarResponse {
   ok: boolean;
@@ -102,9 +104,24 @@ export default function QuestionBox(): JSX.Element {
   const [pendiente, setPendiente] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validacion, setValidacion] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const handleOffline = () => setOffline(true);
+    const handleOnline = () => setOffline(false);
+    setOffline(!navigator.onLine);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (offline) return;
     const texto = pregunta.trim();
     if (texto.length === 0) {
       setValidacion(MENSAJE_VALIDACION);
@@ -174,7 +191,7 @@ export default function QuestionBox(): JSX.Element {
         placeholder={PLACEHOLDER}
         aria-describedby={validacion !== null ? "pregunta-validacion" : undefined}
         aria-invalid={validacion !== null || undefined}
-        disabled={pendiente}
+        disabled={pendiente || offline}
         autoComplete="off"
         style={inputStyle}
       />
@@ -187,17 +204,23 @@ export default function QuestionBox(): JSX.Element {
 
       <button
         type="submit"
-        disabled={pendiente}
-        style={pendiente ? { ...buttonStyle, ...buttonDisabledStyle } : buttonStyle}
+        disabled={pendiente || offline}
+        style={
+          pendiente || offline
+            ? { ...buttonStyle, ...buttonDisabledStyle }
+            : buttonStyle
+        }
       >
         Preguntar
       </button>
 
-      {(pendiente || respuesta !== null) && (
+      {(pendiente || respuesta !== null || error !== null || offline) && (
         <div role="status" aria-busy={busy} style={statusStyle}>
-          {respuesta === null ? (
+          {offline ? (
+            <p style={answerStyle}>{MENSAJE_OFFLINE}</p>
+          ) : pendiente ? (
             <p style={answerStyle}>Procesando tu pregunta…</p>
-          ) : (
+          ) : respuesta !== null ? (
             <>
               <p style={answerStyle}>{respuesta.texto}</p>
               {interpretacion !== undefined && interpretacion !== null && (
@@ -209,7 +232,7 @@ export default function QuestionBox(): JSX.Element {
                 </p>
               )}
             </>
-          )}
+          ) : null}
         </div>
       )}
 

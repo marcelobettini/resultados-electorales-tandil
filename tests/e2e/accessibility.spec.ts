@@ -52,4 +52,34 @@ test.describe("Accesibilidad WCAG AA", () => {
     await page.goto("/elecciones/2023");
     await expectNoViolations(page);
   });
+
+  test("SC-005: el cuadro de preguntas no tiene violaciones AA en cargando, respuesta y validación", async ({
+    page,
+  }) => {
+    await page.route("**/api/preguntar", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    });
+
+    await page.goto("/");
+    await expectNoViolations(page);
+
+    const pregunta = page.getByLabel(/hacé una pregunta/i);
+    await pregunta.fill("¿Quién ganó la última elección?");
+    await pregunta.press("Enter");
+
+    const estado = page.getByRole("status");
+    await expect(estado).toBeVisible();
+    await expect(estado).toContainText("Procesando tu pregunta");
+    await expectNoViolations(page);
+
+    await expect(estado).toContainText("Interpreté:");
+    await expect(estado).toContainText("2025");
+    await expectNoViolations(page);
+
+    await pregunta.fill("   ");
+    await pregunta.press("Enter");
+    await expect(page.getByText(/Escribí una pregunta/)).toBeVisible();
+    await expectNoViolations(page);
+  });
 });
