@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getEleccionesList } from "@/lib/queries/elections";
 import { ElectionList } from "@/components/election-list";
-
+import QuestionBox from "@/components/question-box";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
@@ -23,6 +23,7 @@ export default async function HomePage() {
           El escrutinio definitivo de las elecciones de la ciudad, desde 1963 hasta hoy. Elección
           por elección: votos, porcentajes, bancas y personas electas.
         </p>
+        <QuestionBox />
       </section>
       <ElectionList elecciones={elecciones} />
     </main>
