@@ -174,6 +174,18 @@ const INTENTOS_MOCK: Array<{ pregunta: string; intento: IntentoConsulta }> = [
     },
   },
   {
+    pregunta: "¿quién ganó en 1990?",
+    intento: {
+      valido: true,
+      categoria: "ganador_eleccion",
+      cargo: null,
+      anio: 1990,
+      es_ultima_eleccion: false,
+      limite: null,
+      motivo_rechazo: null,
+    },
+  },
+  {
     pregunta: "¿quién ganó la gobernación de la provincia?",
     intento: {
       valido: false,

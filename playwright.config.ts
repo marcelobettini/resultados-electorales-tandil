@@ -19,7 +19,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --port ${PORT}`,
+    command:
+      "ASK_INTERPRETER_MODE=mock ASK_RATE_LIMIT_MAX=500 npm run dev -- --port 3100",
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

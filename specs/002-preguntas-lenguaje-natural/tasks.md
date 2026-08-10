@@ -165,8 +165,8 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 - [x] T045 [P] Security review: `LLM_API_KEY` solo en servidor (nunca al navegador ni en repo/logs), SQL siempre parametrizado, sin secretos en query params, usuario de BD de solo lectura, schema de BD nunca expuesto al cliente (FR-016)
 - [x] T046 [P] Performance review: `no-store` en `src/app/api/preguntar/route.ts`, hit path de `answer-cache.ts` sin llamar al LLM (SC-009), retry con backoff acotado, respuesta < 5 s (SC-001)
 - [x] T047 [P] Update documentation: final `.env.example`, `README.md` (variable `ASK_INTERPRETER_MODE`), y `SYSTEM-PROMPT.md` si corresponde
-- [ ] T048 Run `specs/002-preguntas-lenguaje-natural/quickstart.md` validation scenarios (flujo principal, sin año, rechazos, casos límite, ritmo, a11y, offline, errores de sistema)
-- [ ] T049 Run final quality gate: `npm run lint && npm run typecheck && npm run test && npm run test:e2e` all green
+- [x] T048 Run `specs/002-preguntas-lenguaje-natural/quickstart.md` validation scenarios (flujo principal, sin año, rechazos, casos límite, ritmo, a11y, offline, errores de sistema)
+- [x] T049 Run final quality gate: `npm run lint && npm run typecheck && npm run test && npm run test:e2e` all green
 
 ---
 
