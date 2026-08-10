@@ -13,6 +13,7 @@ const CANDIDATOS_AUSENTES = [1990, 1987, 1985, 1992, 1988, 1989, 1991];
 let aniosExistentes: number[];
 let anioSinDatos: number;
 let anioSinIntendente: number | null;
+let anioConPadron: number | null;
 
 function intento(overrides: Partial<IntentoConsulta>): IntentoConsulta {
   return {
@@ -42,6 +43,11 @@ beforeAll(async () => {
     "SELECT anio FROM elecciones WHERE elige_intendente = 0 ORDER BY anio LIMIT 1"
   );
   anioSinIntendente = sinIntendente[0]?.anio ?? null;
+
+  const [conPadron] = await db.query<AnioRow[]>(
+    "SELECT anio FROM elecciones WHERE electores_habilitados IS NOT NULL ORDER BY anio LIMIT 1"
+  );
+  anioConPadron = conPadron[0]?.anio ?? null;
 });
 
 describe("T034 rechazos: batería fuera de alcance contra la BD real (seam renderRespuesta)", () => {
@@ -100,15 +106,25 @@ describe("T034 rechazos: batería fuera de alcance contra la BD real (seam rende
     sinCifras(resp);
   });
 
-  it("participacion (reconocida, no implementada) → categoria_no_disponible, sin cifras", async () => {
+  it.skipIf(anioConPadron === null)(
+    "participacion (reconocida e implementada) → respuesta con padrón",
+    async () => {
+      const resp = await renderRespuesta(
+        intento({ categoria: "participacion", anio: anioConPadron as number })
+      );
+
+      expect(resp.tipo).toBe("respuesta");
+      expect(resp.interpretacion?.categoria).toBe("participacion");
+      expect(resp.texto).toContain("padrón");
+    }
+  );
+
+  it("participacion ya no es categoria_no_disponible (todas las categorías están implementadas)", async () => {
     const resp = await renderRespuesta(
-      intento({ categoria: "participacion", anio: 2011 })
+      intento({ categoria: "participacion", anio: aniosExistentes[0] })
     );
 
-    expect(resp.tipo).toBe("categoria_no_disponible");
-    expect(resp.interpretacion).toBeNull();
-    expect(resp.texto).toContain("todavía no está disponible");
-    sinCifras(resp);
+    expect(resp.tipo).not.toBe("categoria_no_disponible");
   });
 
   it("año sin datos (1990) → sin_datos, sin cifras", async () => {
@@ -125,7 +141,7 @@ describe("T034 rechazos: batería fuera de alcance contra la BD real (seam rende
   });
 
   it.skipIf(anioSinIntendente === null)(
-    "ganador_intendencia en año sin elección de intendente → sin_datos, sin cifras",
+    "ganador_intendencia en año sin elección de intendente → sin_datos categórico",
     async () => {
       const resp = await renderRespuesta(
         intento({
@@ -136,9 +152,25 @@ describe("T034 rechazos: batería fuera de alcance contra la BD real (seam rende
       );
 
       expect(resp.tipo).toBe("sin_datos");
-      expect(resp.interpretacion).toBeNull();
-      expect(resp.texto).toContain("No tengo datos");
-      sinCifras(resp);
+      expect(resp.interpretacion?.categoria).toBe("ganador_intendencia");
+      expect(resp.texto).toContain("no se eligió intendente");
+      expect(resp.texto).toContain(String(anioSinIntendente));
+    }
+  );
+
+  it.skipIf(anioSinIntendente === null)(
+    "ganador_intendencia sin cargo declarado también responde categórico en año legislativo",
+    async () => {
+      const resp = await renderRespuesta(
+        intento({
+          categoria: "ganador_intendencia",
+          cargo: null,
+          anio: anioSinIntendente as number,
+        })
+      );
+
+      expect(resp.tipo).toBe("sin_datos");
+      expect(resp.texto).toContain("no se eligió intendente");
     }
   );
 });

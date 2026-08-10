@@ -25,7 +25,21 @@ const CATEGORIAS: readonly CategoriaId[] = [
   "personas_electas_cargo",
   "serie_total_votos",
   "participacion",
+  "votos_agrupacion",
+  "participacion_agrupacion",
+  "serie_agrupacion",
+  "historial_persona",
 ];
+
+const CATEGORIAS_CON_AGRUPACION: ReadonlySet<CategoriaId> = new Set([
+  "votos_agrupacion",
+  "participacion_agrupacion",
+  "serie_agrupacion",
+]);
+
+const CATEGORIAS_CON_PERSONA: ReadonlySet<CategoriaId> = new Set([
+  "historial_persona",
+]);
 
 const CARGOS: readonly CargoLocal[] = [
   "intendente",
@@ -61,6 +75,10 @@ function esTextoONulo(v: unknown): boolean {
   return v === null || typeof v === "string";
 }
 
+function textoNoVacio(v: unknown): v is string {
+  return typeof v === "string" && v.trim().length > 0;
+}
+
 function esEnteroONulo(v: unknown): boolean {
   return v === null || (typeof v === "number" && Number.isInteger(v));
 }
@@ -78,6 +96,10 @@ function formaValida(r: object): boolean {
     esEnteroONulo(v.anio) &&
     "limite" in v &&
     esEnteroONulo(v.limite) &&
+    "agrupacion" in v &&
+    esTextoONulo(v.agrupacion) &&
+    "persona" in v &&
+    esTextoONulo(v.persona) &&
     "motivo_rechazo" in v &&
     esTextoONulo(v.motivo_rechazo)
   );
@@ -88,7 +110,6 @@ function dominioValido(r: object): boolean {
   if (v.valido === true) {
     return (
       esCategoria(v.categoria) &&
-      v.motivo_rechazo === null &&
       (v.cargo === null || esCargo(v.cargo)) &&
       (v.anio === null || esEnteroEnRango(v.anio, ANIO_MIN, ANIO_MAX)) &&
       (v.anio === null || v.es_ultima_eleccion === false) &&
@@ -98,15 +119,60 @@ function dominioValido(r: object): boolean {
   return esMotivo(v.motivo_rechazo);
 }
 
+function demotarPorFaltaDeParametro(intento: IntentoConsulta): IntentoConsulta | null {
+  const requiereAgrupacion =
+    intento.categoria !== null && CATEGORIAS_CON_AGRUPACION.has(intento.categoria);
+  const requierePersona =
+    intento.categoria !== null && CATEGORIAS_CON_PERSONA.has(intento.categoria);
+  if (
+    (requiereAgrupacion && !textoNoVacio(intento.agrupacion)) ||
+    (requierePersona && !textoNoVacio(intento.persona))
+  ) {
+    return {
+      valido: false,
+      categoria: null,
+      cargo: null,
+      anio: null,
+      es_ultima_eleccion: false,
+      limite: null,
+      agrupacion: null,
+      persona: null,
+      motivo_rechazo: "no_entendida",
+    };
+  }
+  return null;
+}
+
 export function parseIntento(raw: unknown): IntentoParseado {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     return { ok: false, motivo: "no_entendida" };
   }
   const r = raw as Record<string, unknown>;
-  if (!formaValida(r) || !dominioValido(r)) {
+  if (!formaValida(r)) {
     return { ok: false, motivo: "no_entendida" };
   }
-  return { ok: true, intento: r as unknown as IntentoConsulta };
+  const intento = r as unknown as IntentoConsulta;
+  if (intento.valido) {
+    const demotado = demotarPorFaltaDeParametro(intento);
+    if (demotado !== null) {
+      return { ok: true, intento: demotado };
+    }
+    if (!dominioValido(r)) {
+      return { ok: false, motivo: "no_entendida" };
+    }
+    intento.motivo_rechazo = null;
+    if (!CATEGORIAS_CON_AGRUPACION.has(intento.categoria as CategoriaId)) {
+      intento.agrupacion = null;
+    }
+    if (intento.categoria !== "historial_persona") {
+      intento.persona = null;
+    }
+    return { ok: true, intento };
+  }
+  if (!dominioValido(r)) {
+    return { ok: false, motivo: "no_entendida" };
+  }
+  return { ok: true, intento };
 }
 
 export function validateIntento(intento: IntentoConsulta): boolean {

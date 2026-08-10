@@ -49,6 +49,9 @@ const CATEGORIAS_CON_ANIO: Array<{ categoria: CategoriaId; cargo?: CargoLocal }>
   { categoria: "totales_eleccion" },
   { categoria: "bancas_por_partido", cargo: "concejales" },
   { categoria: "personas_electas_cargo", cargo: "intendente" },
+  { categoria: "participacion" },
+  { categoria: "votos_agrupacion" },
+  { categoria: "participacion_agrupacion" },
 ];
 
 describe("consultaSQL", () => {
@@ -150,8 +153,48 @@ describe("consultaSQL", () => {
     expect(params).toEqual([]);
   });
 
-  it("participacion no está en el catálogo: consultaSQL lanza", () => {
-    expect(() => consultaSQL(interp("participacion"), null)).toThrow();
+  it("participacion consulta total_votos y electores_habilitados del año", () => {
+    const { sql, params } = consultaSQL(interp("participacion"), null);
+    expect(sql).toContain("elecciones");
+    expect(sql).toContain("total_votos");
+    expect(sql).toContain("electores_habilitados");
+    expect(sql).toContain("elecciones.anio");
+    expect(params).toEqual([ANIO]);
+  });
+
+  it("votos_agrupacion y participacion_agrupacion filtran por nombre con LIKE", () => {
+    for (const categoria of ["votos_agrupacion", "participacion_agrupacion"] as const) {
+      const { sql, params } = consultaSQL(
+        interp(categoria, { agrupacion: "frente" }),
+        null
+      );
+      expect(sql).toContain("agrupaciones");
+      expect(sql).toContain("elecciones.anio");
+      expect(sql).toContain("LIKE");
+      expect(params).toEqual([ANIO, "%frente%"]);
+    }
+  });
+
+  it("serie_agrupacion consulta todas las elecciones sin filtro de año", () => {
+    const { sql, params } = consultaSQL(
+      interp("serie_agrupacion", { agrupacion: "frente" }),
+      null
+    );
+    expect(sql).toContain("agrupaciones");
+    expect(sql).toContain("LIKE");
+    expect(sql).not.toContain("WHERE elecciones.anio");
+    expect(params).toEqual(["%frente%"]);
+  });
+
+  it("historial_persona consulta electos por nombre con LIKE sin filtro de año", () => {
+    const { sql, params } = consultaSQL(
+      interp("historial_persona", { persona: "gomez" }),
+      null
+    );
+    expect(sql).toContain("electos");
+    expect(sql).toContain("LIKE");
+    expect(sql).not.toContain("WHERE elecciones.anio");
+    expect(params).toEqual(["%gomez%"]);
   });
 
   it("devuelve cargo igual al cargo de entrada", () => {

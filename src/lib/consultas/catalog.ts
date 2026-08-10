@@ -134,12 +134,54 @@ export function consultaSQL(interp: Interpretacion, limite: number | null): Cons
         params: [],
       };
     case "participacion":
+      return {
+        categoria,
+        cargo,
+        sql: `SELECT total_votos, electores_habilitados
+     FROM elecciones
+     WHERE elecciones.anio = ?`,
+        params: [anio],
+      };
+    case "votos_agrupacion":
+    case "participacion_agrupacion":
+      return {
+        categoria,
+        cargo,
+        sql: `SELECT agrupaciones.nombre, agrupaciones.votos, agrupaciones.porcentaje
+     FROM agrupaciones
+     JOIN elecciones ON elecciones.id = agrupaciones.eleccion_id
+     WHERE elecciones.anio = ? AND LOWER(agrupaciones.nombre) LIKE ?
+     ORDER BY agrupaciones.votos IS NULL ASC, agrupaciones.votos DESC`,
+        params: [anio, `%${interp.agrupacion ?? ""}%`],
+      };
+    case "serie_agrupacion":
+      return {
+        categoria,
+        cargo,
+        sql: `SELECT agrupaciones.nombre, elecciones.anio, agrupaciones.votos, agrupaciones.porcentaje
+     FROM agrupaciones
+     JOIN elecciones ON elecciones.id = agrupaciones.eleccion_id
+     WHERE LOWER(agrupaciones.nombre) LIKE ?
+     ORDER BY elecciones.anio ASC`,
+        params: [`%${interp.agrupacion ?? ""}%`],
+      };
+    case "historial_persona":
+      return {
+        categoria,
+        cargo,
+        sql: `SELECT elecciones.anio, electos.cargo, electos.condicion, electos.nombre_completo
+     FROM electos
+     JOIN elecciones ON elecciones.id = electos.eleccion_id
+     WHERE LOWER(electos.nombre_completo) LIKE ?
+     ORDER BY elecciones.anio ASC, electos.cargo ASC`,
+        params: [`%${interp.persona ?? ""}%`],
+      };
     default:
       throw new Error(`categoría no implementada: ${categoria}`);
   }
 }
 
-function datosBase(interp: Interpretacion): TemplateData {
+export function datosBase(interp: Interpretacion): TemplateData {
   return {
     anio: interp.anio,
     cargo: interp.cargo,
@@ -158,6 +200,12 @@ function datosBase(interp: Interpretacion): TemplateData {
     bancas: [],
     electos: [],
     serie: [],
+    agrupacion: interp.agrupacion ?? null,
+    persona: interp.persona ?? null,
+    votosAgrupacion: null,
+    serieAgrupacion: null,
+    historial: null,
+    participacionDatos: null,
   };
 }
 

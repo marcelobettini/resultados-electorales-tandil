@@ -14,6 +14,10 @@ export const INTENT_JSON_SCHEMA = {
         "personas_electas_cargo",
         "serie_total_votos",
         "participacion",
+        "votos_agrupacion",
+        "participacion_agrupacion",
+        "serie_agrupacion",
+        "historial_persona",
       ],
     },
     cargo: {
@@ -23,6 +27,8 @@ export const INTENT_JSON_SCHEMA = {
     anio: { type: ["integer", "null"] },
     es_ultima_eleccion: { type: "boolean" },
     limite: { type: ["integer", "null"] },
+    agrupacion: { type: ["string", "null"] },
+    persona: { type: ["string", "null"] },
     motivo_rechazo: {
       type: ["string", "null"],
       enum: [
@@ -41,6 +47,8 @@ export const INTENT_JSON_SCHEMA = {
     "anio",
     "es_ultima_eleccion",
     "limite",
+    "agrupacion",
+    "persona",
     "motivo_rechazo",
   ],
   additionalProperties: false,

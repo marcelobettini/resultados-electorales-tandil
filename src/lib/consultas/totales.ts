@@ -38,3 +38,22 @@ export async function totalesPorAnio(anio: number): Promise<TotalesAnio | null> 
     mesas: row.total_mesas,
   };
 }
+
+export interface ParticipacionAnio {
+  votantes: number | null;
+  padron: number | null;
+  porcentaje: number | null;
+}
+
+export async function participacionPorAnio(anio: number): Promise<ParticipacionAnio | null> {
+  const totales = await totalesPorAnio(anio);
+  if (!totales) return null;
+  if (totales.votantes === null || totales.padron === null) {
+    return { votantes: totales.votantes, padron: null, porcentaje: null };
+  }
+  return {
+    votantes: totales.votantes,
+    padron: totales.padron,
+    porcentaje: (totales.votantes / totales.padron) * 100,
+  };
+}

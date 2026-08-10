@@ -23,6 +23,10 @@ const CATEGORIA_IDS: readonly CategoriaId[] = [
   "personas_electas_cargo",
   "serie_total_votos",
   "participacion",
+  "votos_agrupacion",
+  "participacion_agrupacion",
+  "serie_agrupacion",
+  "historial_persona",
 ];
 
 function baseIntento(): Record<string, unknown> {
@@ -33,28 +37,26 @@ function baseIntento(): Record<string, unknown> {
     anio: 1991,
     es_ultima_eleccion: false,
     limite: null,
+    agrupacion: null,
+    persona: null,
     motivo_rechazo: null,
   };
 }
 
 describe("taxonomy", () => {
-  it("TAXONOMY tiene 9 entradas, una por CategoriaId, y solo participacion no implementada", () => {
-    expect(TAXONOMY).toHaveLength(9);
+  it("TAXONOMY tiene 13 entradas, una por CategoriaId, todas implementadas", () => {
+    expect(TAXONOMY).toHaveLength(13);
     expect(TAXONOMY.map((c) => c.id).sort()).toEqual([...CATEGORIA_IDS].sort());
 
     const implementadas = TAXONOMY.filter((c) => c.implemented);
-    expect(implementadas).toHaveLength(8);
-
-    const participacion = TAXONOMY.find((c) => c.id === "participacion");
-    expect(participacion?.implemented).toBe(false);
-    expect(TAXONOMY.filter((c) => !c.implemented)).toEqual([participacion]);
+    expect(implementadas).toHaveLength(13);
+    expect(TAXONOMY.filter((c) => !c.implemented)).toEqual([]);
   });
 
-  it("CATEGORIAS_IMPLEMENTADAS coincide con los 8 ids implementados", () => {
+  it("CATEGORIAS_IMPLEMENTADAS coincide con las 13 ids implementadas", () => {
     const idsImplementadas = TAXONOMY.filter((c) => c.implemented).map((c) => c.id);
     expect(CATEGORIAS_IMPLEMENTADAS).toEqual(idsImplementadas);
-    expect(CATEGORIAS_IMPLEMENTADAS).toHaveLength(8);
-    expect(CATEGORIAS_IMPLEMENTADAS).not.toContain("participacion");
+    expect(CATEGORIAS_IMPLEMENTADAS).toHaveLength(13);
   });
 
   it("esCategoria(ganador_eleccion) es true y estrecha el tipo; bogus es false", () => {
@@ -73,9 +75,9 @@ describe("taxonomy", () => {
     expect(nombreLegible("participacion")).toBe("porcentaje de participación");
   });
 
-  it("los 9 nombreLegible son únicos y no vacíos", () => {
+  it("los 13 nombreLegible son únicos y no vacíos", () => {
     const nombres = TAXONOMY.map((c) => c.nombreLegible);
-    expect(new Set(nombres).size).toBe(9);
+    expect(new Set(nombres).size).toBe(13);
     for (const nombre of nombres) {
       expect(nombre.trim().length).toBeGreaterThan(0);
     }
@@ -93,13 +95,15 @@ describe("intent-schema", () => {
       "anio",
       "es_ultima_eleccion",
       "limite",
+      "agrupacion",
+      "persona",
       "motivo_rechazo",
     ]);
   });
 
-  it("el enum de categoria tiene 9 entradas y coincide con los 9 CategoriaId", () => {
+  it("el enum de categoria tiene 13 entradas y coincide con los 13 CategoriaId", () => {
     const enumCategorias = INTENT_JSON_SCHEMA.properties.categoria.enum;
-    expect(enumCategorias).toHaveLength(9);
+    expect(enumCategorias).toHaveLength(13);
     expect([...enumCategorias].sort()).toEqual([...CATEGORIA_IDS].sort());
   });
 
@@ -157,6 +161,8 @@ describe("parseIntento", () => {
         anio: 1991,
         es_ultima_eleccion: false,
         limite: null,
+        agrupacion: null,
+        persona: null,
         motivo_rechazo: null,
       });
     }
@@ -204,10 +210,15 @@ describe("parseIntento", () => {
     });
   });
 
-  it("rechaza valido:true con motivo_rechazo no nulo", () => {
-    expect(
-      parseIntento({ ...baseIntento(), motivo_rechazo: "no_entendida" })
-    ).toEqual({ ok: false, motivo: "no_entendida" });
+  it("acepta valido:true con motivo_rechazo espurio normalizándolo a null", () => {
+    const result = parseIntento({
+      ...baseIntento(),
+      motivo_rechazo: "no_entendida",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.intento.motivo_rechazo).toBeNull();
+    }
   });
 
   it("acepta valido:false con motivo_rechazo valido (paso) pasándolo tal cual", () => {
@@ -218,6 +229,8 @@ describe("parseIntento", () => {
       anio: null,
       es_ultima_eleccion: false,
       limite: null,
+      agrupacion: null,
+      persona: null,
       motivo_rechazo: "paso",
     });
     expect(result.ok).toBe(true);
@@ -259,6 +272,8 @@ describe("validateIntento", () => {
       anio: 1991,
       es_ultima_eleccion: false,
       limite: null,
+      agrupacion: null,
+      persona: null,
       motivo_rechazo: null,
     };
     const invalido: IntentoConsulta = {

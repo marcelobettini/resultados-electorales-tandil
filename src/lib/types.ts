@@ -52,7 +52,11 @@ export type CategoriaId =
   | "bancas_por_partido"
   | "personas_electas_cargo"
   | "serie_total_votos"
-  | "participacion";
+  | "participacion"
+  | "votos_agrupacion"
+  | "participacion_agrupacion"
+  | "serie_agrupacion"
+  | "historial_persona";
 
 export type CargoLocal = "intendente" | "concejales" | "consejeros_escolares";
 
@@ -79,6 +83,8 @@ export interface IntentoConsulta {
   // null + es_ultima_eleccion=true → se resuelve a MAX(anio) en la capa de consultas
   es_ultima_eleccion: boolean;
   limite: number | null;
+  agrupacion?: string | null;
+  persona?: string | null;
   motivo_rechazo: MotivoRechazo | null;
 }
 
@@ -87,6 +93,8 @@ export interface Interpretacion {
   anio: number;
   categoria: CategoriaId;
   cargo: CargoLocal | null;
+  agrupacion?: string | null;
+  persona?: string | null;
 }
 
 export interface Respuesta {

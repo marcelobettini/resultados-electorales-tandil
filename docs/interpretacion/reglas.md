@@ -11,7 +11,7 @@ El intérprete acepta **únicamente** preguntas que cumplan todas estas condicio
 - **Solo elecciones locales de Tandil**, sobre los tres cargos municipales: intendente, concejales y consejeros escolares.
 - **Solo elecciones generales** (no primarias ni internas).
 - **Solo escrutinio definitivo** (resultado oficial publicado; la base contiene exclusivamente ese dato).
-- **Una elección a la vez**: la pregunta se resuelve sobre una elección (o sobre la serie de totales de votos por año, que no compara agrupaciones entre años).
+- **Una elección a la vez**: la pregunta se resuelve sobre una elección, salvo las categorías transversales `serie_total_votos`, `serie_agrupacion` e `historial_persona`, que recorren todos los años sin comparar agrupaciones entre años.
 
 ### Prohibido (en todos los casos deriva en rechazo, ver sección 6)
 
@@ -25,23 +25,25 @@ El intérprete acepta **únicamente** preguntas que cumplan todas estas condicio
 
 ## 2. Taxonomía de categorías
 
-Categorías de la taxonomía cerrada y extensible (FR-003). `id` es el valor exacto del enum `CategoriaId`. Todas las categorías con `implemented = true`; `participacion` está reconocida pero **no implementada** (ver nota). La columna "Columnas de BD" referencia el esquema real de `db_schema.sql` (solo lectura, sin cómputo).
+Categorías de la taxonomía cerrada y extensible (FR-003). `id` es el valor exacto del enum `CategoriaId`. Todas las categorías tienen `implemented = true`. La columna "Columnas de BD" referencia el esquema real de `db_schema.sql` (solo lectura; la única operación de cómputo es el cociente de participación, ver nota).
 
-| id | Nombre legible (línea "Interpreté: …") | Params | Columnas de BD que usa | implemented |
-|---|---|---|---|---|
-| `ganador_eleccion` | ganador de la elección | año/última | `agrupaciones.votos`, `agrupaciones.nombre`, `agrupaciones.porcentaje` | true |
-| `ganador_intendencia` | ganador de la intendencia | año/última | `agrupaciones.obtuvo_intendencia = 1`; `elecciones.elige_intendente` | true |
-| `diferencia_primero_segundo` | diferencia entre el primero y el segundo | año/última | `agrupaciones.votos` (top 2) | true |
-| `ranking_top_n` | ranking de los primeros N | año/última, `limite` | `agrupaciones.votos`, `agrupaciones.nombre` (top N) | true |
-| `totales_eleccion` | totales de la elección | año/última | `elecciones.total_votos`, `elecciones.electores_habilitados`, `elecciones.votos_positivos`, `elecciones.votos_blanco`, `elecciones.votos_nulos`, `elecciones.total_mesas` | true |
-| `bancas_por_partido` | bancas por partido | año/última, `cargo` | `agrupaciones.concejales_obtenidos`, `agrupaciones.consejeros_obtenidos`, `agrupaciones.obtuvo_intendencia` | true |
-| `personas_electas_cargo` | personas electas por cargo | año/última, `cargo` | `electos.nombre_completo`, `electos.cargo`, `electos.condicion`, `electos.agrupacion_id` | true |
-| `serie_total_votos` | serie del total de votos por año | (todos los años) | `elecciones.anio`, `elecciones.total_votos` | true |
-| `participacion` | porcentaje de participación | año/última | requeriría cómputo de `elecciones.total_votos` / `elecciones.electores_habilitados` | **false** |
+| id                           | Nombre legible (línea "Interpreté: …")    | Params                        | Columnas de BD que usa                                                                                                                                                    | implemented |
+| ---------------------------- | ----------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| `ganador_eleccion`           | ganador de la elección                    | año/última                    | `agrupaciones.votos`, `agrupaciones.nombre`, `agrupaciones.porcentaje`                                                                                                    | true        |
+| `ganador_intendencia`        | ganador de la intendencia                 | año/última                    | `agrupaciones.obtuvo_intendencia = 1`; `elecciones.elige_intendente`                                                                                                      | true        |
+| `diferencia_primero_segundo` | diferencia entre el primero y el segundo  | año/última                    | `agrupaciones.votos` (top 2)                                                                                                                                              | true        |
+| `ranking_top_n`              | ranking de los primeros N                 | año/última, `limite`          | `agrupaciones.votos`, `agrupaciones.nombre` (top N)                                                                                                                       | true        |
+| `totales_eleccion`           | totales de la elección                    | año/última                    | `elecciones.total_votos`, `elecciones.electores_habilitados`, `elecciones.votos_positivos`, `elecciones.votos_blanco`, `elecciones.votos_nulos`, `elecciones.total_mesas` | true        |
+| `bancas_por_partido`         | bancas por partido                        | año/última, `cargo`           | `agrupaciones.concejales_obtenidos`, `agrupaciones.consejeros_obtenidos`, `agrupaciones.obtuvo_intendencia`                                                               | true        |
+| `personas_electas_cargo`     | personas electas por cargo                | año/última, `cargo`           | `electos.nombre_completo`, `electos.cargo`, `electos.condicion`, `electos.agrupacion_id`                                                                                  | true        |
+| `serie_total_votos`          | serie del total de votos por año          | (todos los años)              | `elecciones.anio`, `elecciones.total_votos`                                                                                                                               | true        |
+| `votos_agrupacion`           | votos de una agrupación en un año         | año/última, `agrupacion`      | `agrupaciones.votos`, `agrupaciones.nombre`, `agrupaciones.porcentaje`                                                                                                    | true        |
+| `participacion_agrupacion`   | participación de una agrupación en un año | año/última, `agrupacion`      | `agrupaciones.nombre`                                                                                                                                                     | true        |
+| `serie_agrupacion`           | serie de votos de una agrupación por año  | `agrupacion`                  | `agrupaciones.votos`, `agrupaciones.nombre`, `elecciones.anio`                                                                                                            | true        |
+| `historial_persona`          | historial electoral de una persona        | `persona`, `cargo` (opcional) | `electos.nombre_completo`, `electos.cargo`, `electos.condicion`, `elecciones.anio`                                                                                        | true        |
+| `participacion`              | porcentaje de participación               | año/última                    | `elecciones.total_votos`, `elecciones.electores_habilitados` (cociente calculado)                                                                                         | true        |
 
-**Nota `participacion`**: es una categoría reconocida pero no implementada (FR-005). Responderla exigiría calcular el cociente votos/padrón, lo que viola el principio II (la plataforma no calcula nada). Ante una pregunta de participación, el intento es `valido=true`, `categoria=participacion`, y el servidor responde "esta consulta todavía no está disponible" (`tipo=categoria_no_disponible`). No se intenta responder con cifras.
-
-Todas las categorías salvo `serie_total_votos` se resuelven dentro de una única elección (por `anio` o por la más reciente). `serie_total_votos` recorre todos los años y no compara agrupaciones entre años.
+Las categorías `ganador_eleccion`, `ganador_intendencia`, `diferencia_primero_segundo`, `ranking_top_n`, `totales_eleccion`, `bancas_por_partido`, `personas_electas_cargo`, `votos_agrupacion`, `participacion_agrupacion` y `participacion` se resuelven dentro de una única elección (por `anio` o por la más reciente). `serie_total_votos`, `serie_agrupacion` e `historial_persona` son transversales: recorren todos los años y nunca comparan agrupaciones entre años.
 
 ---
 
@@ -59,6 +61,10 @@ Sinónimos y expresiones coloquiales que activan cada categoría. Si una pregunt
 - **`bancas_por_partido`**: bancas, escaños, concejales que entran, cuántos concejales sacó, cómo se repartieron las bancas, cuántas bancas obtuvo cada partido, bancas de consejeros.
 - **`personas_electas_cargo`**: quiénes son los concejales, quiénes son los consejeros escolares, los electos, los elegidos, personas electas, la nómina, quién quedó como titular/suplente.
 - **`serie_total_votos`**: serie, evolución, histórico del total de votos, cuánta gente votó a lo largo de los años, en todos los años, año por año.
+- **`votos_agrupacion`**: cuántos votos sacó X, los votos de X, cuánta gente votó a X, el desempeño de X en una elección (con agrupación explícita y un solo año).
+- **`participacion_agrupacion`**: participó X, estuvo X, compitió X, ¿X se presentó?, ¿X formó parte de la elección? (sí/no, con agrupación explícita y un solo año).
+- **`serie_agrupacion`**: en qué años participó X, cuántos votos sacó X en cada elección, evolución de los votos de X, historial de votos de X (agrupación explícita, sin año).
+- **`historial_persona`**: cuántas veces fue elegido X, en qué años fue electo X, historial electoral de X, cargos en los que salió X, ¿X fue intendente/concejal? (persona puntual).
 - **`participacion`**: participación, porcentaje de participación, cuánta gente fue a votar en proporción, qué porcentaje del padrón votó.
 
 ### Por cargo (solo cargos locales de Tandil)
@@ -69,8 +75,8 @@ Sinónimos y expresiones coloquiales que activan cada categoría. Si una pregunt
 
 ### Expresiones que NO definen categoría por sí solas
 
-- "¿cuántos votos sacó…?" pide cifras de votos: se asigna a `ganador_eleccion` o `ranking_top_n` según el foco (el ganador vs. el orden general).
-- "¿cómo le fue a…?" pide el desempeño de una agrupación: en una sola elección se resuelve como `ganador_eleccion`/`ranking_top_n`; si la pregunta compara desempeños entre años, deriva en `comparacion_partido_entre_anios` (sección 6).
+- "¿cuántos votos sacó…?" pide cifras de votos: se asigna a `votos_agrupacion` si hay agrupación explícita, o a `ganador_eleccion`/`ranking_top_n` según el foco (el ganador vs. el orden general).
+- "¿cómo le fue a…?" pide el desempeño de una agrupación: en una sola elección se resuelve como `votos_agrupacion`; si la pregunta compara desempeños entre años ("desde 1963", "a lo largo de los años") con juicio de valor, deriva en `comparacion_partido_entre_anios` (sección 6). `serie_agrupacion` responde la serie de votos **sin comparar ni evaluar**: solo muestra los años con datos.
 
 ---
 
@@ -78,11 +84,11 @@ Sinónimos y expresiones coloquiales que activan cada categoría. Si una pregunt
 
 El año se resuelve en dos pasos: primero decide el intérprete si hay año explícito; el servidor resuelve siempre el valor concreto.
 
-| Situación | `anio` | `es_ultima_eleccion` |
-|---|---|---|
-| Año explícito (número de 4 dígitos: "en 2001", "del 2001", "2001") | el año | `false` |
-| "la última elección", "la más reciente", "las últimas elecciones", "la última vez que se votó" | `null` | `true` |
-| Pregunta sin ninguna referencia a año (p. ej. "¿Quién ganó?") | `null` | `true` |
+| Situación                                                                                      | `anio` | `es_ultima_eleccion` |
+| ---------------------------------------------------------------------------------------------- | ------ | -------------------- |
+| Año explícito (número de 4 dígitos: "en 2001", "del 2001", "2001")                             | el año | `false`              |
+| "la última elección", "la más reciente", "las últimas elecciones", "la última vez que se votó" | `null` | `true`               |
+| Pregunta sin ninguna referencia a año (p. ej. "¿Quién ganó?")                                  | `null` | `true`               |
 
 Reglas:
 
@@ -94,45 +100,54 @@ Reglas:
 
 ## 5. Ejemplos
 
-Cada ejemplo lista la pregunta en lenguaje natural y el intento esperado (categoría, cargo si aplica, resolución de año). Dos ejemplos por categoría implementada, uno para `participacion`, y un ejemplo por cada `motivo_rechazo`.
+Cada ejemplo lista la pregunta en lenguaje natural y el intento esperado (categoría, cargo si aplica, resolución de año). Dos ejemplos por categoría implementada y un ejemplo por cada `motivo_rechazo`.
 
 ### Categorías implementadas
 
 **`ganador_eleccion`**
+
 - "¿Quién ganó la elección en 2001?" → `valido=true`, `categoria=ganador_eleccion`, `anio=2001`, `es_ultima_eleccion=false`.
 - "¿Quién ganó la última elección?" → `valido=true`, `categoria=ganador_eleccion`, `anio=null`, `es_ultima_eleccion=true`.
 
 **`ganador_intendencia`**
+
 - "¿Quién ganó la intendencia en 2011?" → `valido=true`, `categoria=ganador_intendencia`, `cargo=intendente`, `anio=2011`.
 - "¿Quién es el intendente?" → `valido=true`, `categoria=ganador_intendencia`, `cargo=intendente`, `es_ultima_eleccion=true`.
 
 **`diferencia_primero_segundo`**
+
 - "¿Qué diferencia de votos hubo entre el primero y el segundo en 2001?" → `valido=true`, `categoria=diferencia_primero_segundo`, `anio=2001`.
 - "¿Por cuánto ganó el primero en las últimas elecciones?" → `valido=true`, `categoria=diferencia_primero_segundo`, `es_ultima_eleccion=true`.
 
 **`ranking_top_n`**
+
 - "¿Cuáles fueron los tres partidos más votados en 2019?" → `valido=true`, `categoria=ranking_top_n`, `limite=3`, `anio=2019`.
 - "¿Cómo quedó el ranking de votos?" → `valido=true`, `categoria=ranking_top_n`, `es_ultima_eleccion=true` (sin `limite` explícito → el servidor usa 3).
 
 **`totales_eleccion`**
+
 - "¿Cuánta gente votó en 1995?" → `valido=true`, `categoria=totales_eleccion`, `anio=1995`.
 - "¿Cuántos votos en blanco hubo y cuántas mesas hubo en las últimas elecciones?" → `valido=true`, `categoria=totales_eleccion`, `es_ultima_eleccion=true`.
 
 **`bancas_por_partido`**
+
 - "¿Cuántas bancas de concejales obtuvo cada partido en 2009?" → `valido=true`, `categoria=bancas_por_partido`, `cargo=concejales`, `anio=2009`.
 - "¿Cómo se repartieron las bancas de consejeros escolares en la última elección?" → `valido=true`, `categoria=bancas_por_partido`, `cargo=consejeros_escolares`, `es_ultima_eleccion=true`.
 
 **`personas_electas_cargo`**
+
 - "¿Quiénes fueron los concejales electos en 2015?" → `valido=true`, `categoria=personas_electas_cargo`, `cargo=concejales`, `anio=2015`.
 - "¿Quién resultó electo intendente en las últimas elecciones?" → `valido=true`, `categoria=personas_electas_cargo`, `cargo=intendente`, `es_ultima_eleccion=true`.
 
 **`serie_total_votos`**
+
 - "¿Cómo evolucionó el total de votos a lo largo de los años?" → `valido=true`, `categoria=serie_total_votos`, `anio=null`, `es_ultima_eleccion=false`.
 - "¿Cuánta gente votó en cada elección desde 1983?" → `valido=true`, `categoria=serie_total_votos`.
 
 ### Categoría reconocida no implementada
 
 **`participacion`**
+
 - "¿Cuál fue el porcentaje de participación en 2019?" → `valido=true`, `categoria=participacion`, `anio=2019`; el servidor responde "esta consulta todavía no está disponible" (`tipo=categoria_no_disponible`), sin cifras.
 
 ### Rechazos (un ejemplo por `motivo_rechazo`)
@@ -149,19 +164,18 @@ Cada ejemplo lista la pregunta en lenguaje natural y el intento esperado (catego
 
 ### Mapeo a `motivo_rechazo`
 
-| Situación | `motivo_rechazo` |
-|---|---|
-| Pregunta confusa, sin relación con las elecciones de Tandil, o irreconocible en ninguna categoría (incluye cargo o año inválidos) | `no_entendida` |
-| Otra localidad / la provincia / el país, pero con cargo genérico ("la elección") | `ambito_no_local` |
-| Menciona PASO, primarias o internas | `paso` |
-| Cargo nacional o provincial explícito (presidente, gobernador, diputado, senador, etc.) | `cargo_no_local` |
+| Situación                                                                                                                              | `motivo_rechazo`                  |
+| -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Pregunta confusa, sin relación con las elecciones de Tandil, o irreconocible en ninguna categoría (incluye cargo o año inválidos)      | `no_entendida`                    |
+| Otra localidad / la provincia / el país, pero con cargo genérico ("la elección")                                                       | `ambito_no_local`                 |
+| Menciona PASO, primarias o internas                                                                                                    | `paso`                            |
+| Cargo nacional o provincial explícito (presidente, gobernador, diputado, senador, etc.)                                                | `cargo_no_local`                  |
 | Comparación del mismo partido/agrupación entre años distintos ("desde", "entre 1983 y 1991", "cómo le fue a X a lo largo de los años") | `comparacion_partido_entre_anios` |
 
 ### Reglas de dominio
 
 - **Comparación entre años prohibida**: los nombres y números de lista de las agrupaciones cambian entre elecciones y los sublemas están colapsados al frente, por lo que la misma etiqueta no representa lo mismo en años distintos. Cualquier pregunta que compare la misma agrupación entre años se rechaza. La `serie_total_votos` es la única categoría transversal y solo compara el total de votos emitidos por año, nunca agrupaciones.
 - **Empates**: si dos o más agrupaciones empatan en un puesto (primero/segundo/N), el sistema lo reporta explícitamente en la advertencia y **no elige un segundo puesto arbitrario**. El intérprete no decide ganadores en empate: solo emite la categoría; la consulta y la plantilla detectan y comunican el empate.
-- **No calcular cifras**: la plataforma no calcula nada (principio II). El intérprete nunca pide resultados de cómputos. Un `porcentaje` NULL (no disponible en actas anteriores a ~2003) se señala en la advertencia; nunca se completa ni se estima. Tampoco se suman columnas para completar huecos.
 - **0 literal vs NULL**: el valor 0 es un resultado válido (una agrupación que compitió y no obtuvo votos); `NULL` es un dato faltante. Se distinguen: el 0 se informa como cifra; el `NULL` se señala como hueco en la advertencia.
 - **1963 ya resuelto en los datos**: en 1963 no se eligió el cargo de intendente por separado; esa resolución ya está fijada en los datos (`elige_intendente=0`). El sistema no aplica reglas especiales de 1963 en tiempo de consulta; la consulta solo indica que ese año no se eligió el cargo.
 - **Patrón bienal normal**: desde 1965 la alternancia es normal (un año con intendente, el siguiente sin él). No se señala como anomalía ni se interpreta como dato faltante.

@@ -96,29 +96,11 @@ describe("renderRespuesta con intento inválido (sin BD)", () => {
   });
 });
 
-describe("categoria_no_disponible (participacion)", () => {
-  it("categoriaNoDisponibleTemplate informa que todavía no está disponible sin cifras", () => {
+describe("categoriaNoDisponibleTemplate", () => {
+  it("informa que la categoría todavía no está disponible sin cifras", () => {
     const texto = categoriaNoDisponibleTemplate();
     expect(texto).toContain("todavía no está disponible");
     expect(texto).not.toMatch(/[0-9]/);
-  });
-
-  it("renderRespuesta con participacion responde categoria_no_disponible antes de resolver el año", async () => {
-    const intento: IntentoConsulta = {
-      valido: true,
-      categoria: "participacion",
-      cargo: null,
-      anio: 2011,
-      es_ultima_eleccion: false,
-      limite: null,
-      motivo_rechazo: null,
-    };
-    const respuesta = await renderRespuesta(intento);
-    expect(respuesta.tipo).toBe("categoria_no_disponible");
-    expect(respuesta.interpretacion).toBeNull();
-    expect(respuesta.advertencia).toBeNull();
-    expect(respuesta.texto).toContain("todavía no está disponible");
-    expect(respuesta.texto).not.toMatch(/[0-9]/);
   });
 });
 

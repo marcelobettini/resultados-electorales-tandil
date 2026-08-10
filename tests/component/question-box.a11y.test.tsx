@@ -54,7 +54,7 @@ const RESPUESTA_OK: Respuesta = {
   desde_cache: false,
 };
 
-const PLACEHOLDER = "Hacé una pregunta sobre los resultados electorales…";
+const PLACEHOLDER = "Quién ganó en 1999... Cuántos concejales obtuvo el ganador en 1989...";
 
 describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
   let fetchMock: ReturnType<typeof vi.fn>;

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import QuestionBox from "@/components/question-box";
 
-const PLACEHOLDER = "Hacé una pregunta sobre los resultados electorales…";
+const PLACEHOLDER = "Quién ganó en 1999... Cuántos concejales obtuvo el ganador en 1989...";
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
@@ -132,7 +132,7 @@ describe("QuestionBox", () => {
       await user.click(screen.getByRole("button", { name: /preguntar/i }));
       await screen.findByText(/Agrupación A/);
       expect(screen.getByText(/2001/)).toBeInTheDocument();
-      expect(screen.getByText(/diferencia_primero_segundo/)).toBeInTheDocument();
+      expect(screen.getByText(/diferencia entre el primero y el segundo/)).toBeInTheDocument();
       expect(screen.getByText(/intendente/)).toBeInTheDocument();
     });
   });
@@ -144,14 +144,14 @@ describe("QuestionBox", () => {
           okResponse({
             tipo: "respuesta",
             texto: "Respuesta A: ganó «Agrupación A» en 2001.",
-            interpretacion: { anio: 2001, categoria: "ganador", cargo: "intendente" },
+            interpretacion: { anio: 2001, categoria: "ganador_eleccion", cargo: "intendente" },
           }),
         )
         .mockResolvedValueOnce(
           okResponse({
             tipo: "respuesta",
             texto: "Respuesta B: ganó «Agrupación B» en 2011.",
-            interpretacion: { anio: 2011, categoria: "ganador", cargo: "intendente" },
+            interpretacion: { anio: 2011, categoria: "ganador_eleccion", cargo: "intendente" },
           }),
         );
       const user = userEvent.setup();
@@ -184,7 +184,7 @@ describe("QuestionBox", () => {
         okResponse({
           tipo: "respuesta",
           texto: "Recuperado: ganó «Agrupación A» en 2001.",
-          interpretacion: { anio: 2001, categoria: "ganador", cargo: "intendente" },
+          interpretacion: { anio: 2001, categoria: "ganador_eleccion", cargo: "intendente" },
         }),
       );
       await user.clear(input);

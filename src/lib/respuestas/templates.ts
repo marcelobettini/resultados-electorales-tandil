@@ -29,11 +29,46 @@ export interface TemplateData {
   bancas: Array<{ partido: string; bancas: number }>;
   electos: Array<{ nombre: string; partido: string; cargo: CargoLocal }>;
   serie: Array<{ anio: number; votos: number | null }>;
+  agrupacion?: string | null;
+  persona?: string | null;
+  votosAgrupacion?: { votos: number | null; porcentaje: number | null } | null;
+  serieAgrupacion?: Array<{ anio: number; nombre: string; votos: number | null }> | null;
+  historial?: Array<{ anio: number; cargo: string; condicion: string }> | null;
+  participacionDatos?: {
+    votantes: number | null;
+    padron: number | null;
+    porcentaje: number | null;
+  } | null;
 }
 
+const CATEGORIAS_CON_CARGO_IMPLICITO: ReadonlySet<CategoriaId> = new Set([
+  "ganador_intendencia",
+]);
+
 export function lineaInterpretacion(interp: Interpretacion): string {
-  const cargo = interp.cargo ? ` de ${interp.cargo}` : "";
+  const cargo =
+    interp.cargo && !CATEGORIAS_CON_CARGO_IMPLICITO.has(interp.categoria)
+      ? ` de ${interp.cargo}`
+      : "";
+  const transversales = new Set<CategoriaId>([
+    "serie_total_votos",
+    "serie_agrupacion",
+    "historial_persona",
+  ]);
+  if (transversales.has(interp.categoria)) {
+    return `Interpreté: ${nombreLegible(interp.categoria)}${cargo}.`;
+  }
   return `Interpreté: ${nombreLegible(interp.categoria)}${cargo} de ${interp.anio}.`;
+}
+
+const CARGO_NO_ELIGIDO: Record<CargoLocal, string> = {
+  intendente: "no se eligió intendente",
+  concejales: "no se eligieron concejales",
+  consejeros_escolares: "no se eligieron consejeros escolares",
+};
+
+export function cargoNoElegidoTemplate(cargo: CargoLocal, anio: number): string {
+  return `En ${anio} ${CARGO_NO_ELIGIDO[cargo]} en Tandil: fue una elección legislativa (solo se renovaron concejales y consejeros escolares).`;
 }
 
 export function ganadorTemplate(datos: TemplateData): string {
@@ -120,6 +155,115 @@ export function serieTemplate(datos: TemplateData): string {
   return `Serie del total de votos por año:\n${lineas.join("\n")}`;
 }
 
+export function votosAgrupacionTemplate(datos: TemplateData): string {
+  const { anio, agrupacion, votosAgrupacion } = datos;
+  if (!votosAgrupacion) {
+    return `No hay datos de votos de «${agrupacion}» en ${anio}.`;
+  }
+  if (votosAgrupacion.votos === null) {
+    return `«${agrupacion}» compitió en ${anio}, pero sus votos no están registrados.`;
+  }
+  const porcentaje =
+    votosAgrupacion.porcentaje === null
+      ? ""
+      : ` (${formatPercentage(votosAgrupacion.porcentaje)})`;
+  return `En ${anio}, «${agrupacion}» obtuvo ${formatNumber(votosAgrupacion.votos)} votos${porcentaje}.`;
+}
+
+export function participacionAgrupacionTemplate(datos: TemplateData): string {
+  const { anio, agrupacion, votosAgrupacion } = datos;
+  if (!votosAgrupacion) {
+    return `Sí, «${agrupacion}» participó en las elecciones de ${anio}.`;
+  }
+  if (votosAgrupacion.votos === null) {
+    return `Sí, «${agrupacion}» participó en las elecciones de ${anio}, aunque sus votos no están registrados.`;
+  }
+  return `Sí, «${agrupacion}» participó en las elecciones de ${anio} con ${formatNumber(votosAgrupacion.votos)} votos.`;
+}
+
+export function serieAgrupacionTemplate(datos: TemplateData): string {
+  const { agrupacion, serieAgrupacion } = datos;
+  if (!serieAgrupacion || serieAgrupacion.length === 0) {
+    return `No hay registros de «${agrupacion}» en ninguna elección.`;
+  }
+  const anos = serieAgrupacion.map((registro) => registro.anio).join(", ");
+  const lineas = serieAgrupacion.map(
+    (registro) => `${registro.anio}: «${registro.nombre}» con ${formatNumber(registro.votos)} votos`
+  );
+  return `«${agrupacion}» participó en ${serieAgrupacion.length} elecciones (${anos}):\n${lineas.join("\n")}`;
+}
+
+const CARGO_SINGULAR: Record<CargoLocal, string> = {
+  intendente: "intendente",
+  concejales: "concejal",
+  consejeros_escolares: "consejero escolar",
+};
+
+export function cargoSingular(cargo: CargoLocal): string {
+  return CARGO_SINGULAR[cargo];
+}
+
+function listarAnios(anios: number[]): string {
+  const partes = anios.map(String);
+  if (partes.length <= 1) return partes.join("");
+  return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
+}
+
+export function historialPersonaTemplate(datos: TemplateData): string {
+  const { persona, historial, cargo } = datos;
+  if (!historial || historial.length === 0) {
+    return `No hay registros de elección de «${persona}».`;
+  }
+  if (cargo) {
+    const anios = historial.map((registro) => registro.anio);
+    const oportunidades = anios.length === 1 ? "oportunidad" : "oportunidades";
+    return `«${persona}» resultó electo ${cargoSingular(cargo)} en ${
+      anios.length
+    } ${oportunidades}: ${listarAnios(anios)}.`;
+  }
+  const lineas = historial.map(
+    (registro) => `${registro.anio}: ${registro.cargo} (${registro.condicion})`
+  );
+  return `«${persona}» resultó electo en ${historial.length} cargos entre ${historial[0].anio} y ${
+    historial[historial.length - 1].anio
+  }:\n${lineas.join("\n")}`;
+}
+
+export interface CandidatoPersonaTemplate {
+  nombre_completo: string;
+  cargos: Array<{ cargo: string; anios: number[] }>;
+}
+
+export function personaAmbiguaTemplate(
+  consulta: string,
+  candidatos: CandidatoPersonaTemplate[]
+): string {
+  if (candidatos.length === 0) {
+    return `«${consulta}» coincide con varias personas en los registros. Reformulá indicando el nombre completo.`;
+  }
+  const lineas = candidatos.map((candidato) => {
+    const detalles = candidato.cargos
+      .map(({ cargo, anios }) => `${cargo.toLowerCase()} en ${anios.join(", ")}`)
+      .join("; ");
+    return `- ${candidato.nombre_completo} (${detalles})`;
+  });
+  return `«${consulta}» coincide con varias personas en los registros:\n${lineas.join(
+    "\n"
+  )}\n¿A cuál te referís? Podés reformular indicando el nombre completo.`;
+}
+
+export function participacionTemplate(datos: TemplateData): string {
+  const { anio, participacionDatos } = datos;
+  if (!participacionDatos || participacionDatos.padron === null) {
+    return `No tengo el padrón de ${anio} para calcular la participación.`;
+  }
+  return `En ${anio} votó el ${formatPercentage(
+    participacionDatos.porcentaje
+  )} del padrón (${formatNumber(participacionDatos.votantes)} de ${formatNumber(
+    participacionDatos.padron
+  )} electores habilitados).`;
+}
+
 export function fueraDeAlcanceTemplate(motivo: MotivoRechazo): string {
   switch (motivo) {
     case "ambito_no_local":
@@ -169,7 +313,15 @@ function templatePorCategoria(datos: TemplateData): string {
     case "serie_total_votos":
       return serieTemplate(datos);
     case "participacion":
-      return categoriaNoDisponibleTemplate();
+      return participacionTemplate(datos);
+    case "votos_agrupacion":
+      return votosAgrupacionTemplate(datos);
+    case "participacion_agrupacion":
+      return participacionAgrupacionTemplate(datos);
+    case "serie_agrupacion":
+      return serieAgrupacionTemplate(datos);
+    case "historial_persona":
+      return historialPersonaTemplate(datos);
   }
 }
 

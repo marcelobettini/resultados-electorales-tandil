@@ -59,8 +59,37 @@ export const TAXONOMY: CategoriaTaxonomia[] = [
   {
     id: "participacion",
     nombreLegible: "porcentaje de participación",
-    implemented: false,
-    descripcion: "Reconocida pero no implementada: exigiría calcular el cociente votos/padrón (no se calcula nada).",
+    implemented: true,
+    descripcion:
+      "Porcentaje del padrón que votó en el año (cociente total_votos / electores_habilitados).",
+  },
+  {
+    id: "votos_agrupacion",
+    nombreLegible: "votos de la agrupación",
+    implemented: true,
+    descripcion:
+      "Votos y porcentaje de una agrupación puntual en una elección (se busca por nombre).",
+  },
+  {
+    id: "participacion_agrupacion",
+    nombreLegible: "participación de la agrupación",
+    implemented: true,
+    descripcion:
+      "Indica si una agrupación puntual compitió en una elección y con cuántos votos.",
+  },
+  {
+    id: "serie_agrupacion",
+    nombreLegible: "historial de la agrupación entre años",
+    implemented: true,
+    descripcion:
+      "Elecciones en las que una agrupación puntual compitió a lo largo de los años (con advertencia por cambios de denominación).",
+  },
+  {
+    id: "historial_persona",
+    nombreLegible: "historial electoral de la persona",
+    implemented: true,
+    descripcion:
+      "Elecciones y cargos en los que una persona puntual resultó electa (se busca por nombre).",
   },
 ];
 

@@ -4,14 +4,17 @@ import {
   advertenciaTemplate,
   armarRespuesta,
   bancasTemplate,
+  cargoNoElegidoTemplate,
   categoriaNoDisponibleTemplate,
   diferenciaTemplate,
   electosTemplate,
   errorSistemaTemplate,
   fueraDeAlcanceTemplate,
   ganadorTemplate,
+  historialPersonaTemplate,
   lineaInterpretacion,
   noEntendidaTemplate,
+  personaAmbiguaTemplate,
   rankingTemplate,
   serieTemplate,
   sinDatosTemplate,
@@ -132,6 +135,32 @@ describe("lineaInterpretacion", () => {
     expect(linea).toContain("1991");
     expect(linea).toContain(nombreLegible("totales_eleccion"));
   });
+
+  it("ganador_intendencia no repite 'intendencia de intendente'", () => {
+    const linea = lineaInterpretacion({
+      anio: 2015,
+      categoria: "ganador_intendencia",
+      cargo: "intendente",
+    });
+    expect(linea).toContain(nombreLegible("ganador_intendencia"));
+    expect(linea).not.toContain("intendencia de intendente");
+    expect(linea).toContain("de 2015");
+  });
+});
+
+describe("cargoNoElegidoTemplate", () => {
+  it("declara taxativamente que no se eligió el cargo en ese año", () => {
+    const texto = cargoNoElegidoTemplate("intendente", 2001);
+    expect(texto).toContain("2001");
+    expect(texto).toContain("no se eligió intendente");
+    expect(texto).toContain("legislativa");
+  });
+
+  it("no presenta un ganador ni fabrica cifras de votos", () => {
+    const texto = cargoNoElegidoTemplate("concejales", 1990);
+    expect(texto).not.toMatch(/votos/);
+    expect(texto).not.toMatch(/«/);
+  });
 });
 
 describe("plantillas de consulta", () => {
@@ -167,6 +196,76 @@ describe("plantillas de consulta", () => {
     expect(texto).toContain("10.000");
     expect(texto).toContain("21.000");
     expect(texto).not.toMatch(/\bvs\b/i);
+  });
+});
+
+describe("historialPersonaTemplate", () => {
+  it("sin cargo lista todos los cargos de la persona", () => {
+    const texto = historialPersonaTemplate(
+      datosBase({
+        persona: "LUNGHI, Miguel Angel",
+        cargo: null,
+        historial: [
+          { anio: 1987, cargo: "CONCEJAL", condicion: "TITULAR" },
+          { anio: 2003, cargo: "INTENDENTE", condicion: "TITULAR" },
+        ],
+      })
+    );
+    expect(texto).toContain("1987: CONCEJAL (TITULAR)");
+    expect(texto).toContain("2003: INTENDENTE (TITULAR)");
+    expect(texto).toContain("2 cargos entre 1987 y 2003");
+  });
+
+  it("con cargo resume solo los años de ese cargo", () => {
+    const texto = historialPersonaTemplate(
+      datosBase({
+        persona: "LUNGHI, Miguel Angel",
+        cargo: "intendente",
+        historial: [
+          { anio: 2003, cargo: "INTENDENTE", condicion: "TITULAR" },
+          { anio: 2015, cargo: "INTENDENTE", condicion: "TITULAR" },
+          { anio: 2019, cargo: "INTENDENTE", condicion: "TITULAR" },
+          { anio: 2023, cargo: "INTENDENTE", condicion: "TITULAR" },
+        ],
+      })
+    );
+    expect(texto).toContain("resultó electo intendente en 4 oportunidades");
+    expect(texto).toContain("2003, 2015, 2019 y 2023");
+    expect(texto).not.toContain("CONCEJAL");
+  });
+});
+
+describe("personaAmbiguaTemplate", () => {
+  it("lista cada candidato con su cargo y sus años y pide aclaración", () => {
+    const texto = personaAmbiguaTemplate("Lunghi", [
+      {
+        nombre_completo: "LUNGHI, Miguel Angel",
+        cargos: [
+          { cargo: "CONCEJAL", anios: [1987] },
+          { cargo: "INTENDENTE", anios: [2003, 2015, 2019, 2023] },
+        ],
+      },
+      {
+        nombre_completo: "LUNGHI, José Emilio",
+        cargos: [{ cargo: "INTENDENTE", anios: [1963] }],
+      },
+      {
+        nombre_completo: "LUNGHI, Sergio Luis",
+        cargos: [{ cargo: "CONCEJAL", anios: [2011] }],
+      },
+    ]);
+    expect(texto).toContain("«Lunghi»");
+    expect(texto).toContain("LUNGHI, Miguel Angel");
+    expect(texto).toContain("intendente en 2003, 2015, 2019, 2023");
+    expect(texto).toContain("LUNGHI, José Emilio");
+    expect(texto).toContain("LUNGHI, Sergio Luis");
+    expect(texto).toContain("¿A cuál te referís?");
+  });
+
+  it("sin candidatos cae en el mensaje de reformular con nombre completo", () => {
+    const texto = personaAmbiguaTemplate("Lunghi", []);
+    expect(texto).toMatch(/reformul/i);
+    expect(texto).toMatch(/nombre completo/i);
   });
 });
 
