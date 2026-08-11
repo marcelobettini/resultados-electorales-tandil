@@ -49,12 +49,12 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 
 - [x] T003 Create shared domain types in `src/lib/types.ts` per data-model.md: `CategoriaId` (enum de 9 categorías), `CargoLocal` (`'intendente'|'concejales'|'consejeros_escolares'`), `MotivoRechazo` (`'no_entendida'|'ambito_no_local'|'paso'|'cargo_no_local'|'comparacion_partido_entre_anios'`), `TipoRespuesta`, `IntentoConsulta`, `Respuesta` (incluye `interpretacion`, `advertencia`, `desde_cache`)
 - [x] T004 Create `docs/interpretacion/reglas.md` (fuente de verdad FR-019) per `contracts/interpretation-rules.md`: alcance local Tandil, taxonomía con flags `implemented`, vocabulario español por categoría y cargo, resolución de año, ejemplos (≥2 por categoría) y prohibiciones
-- [x] T005 [P] Implement taxonomy catalog in `src/lib/interpretacion/taxonomy.ts`: closed extensible list (FR-003) with `id`, `nombreLegible`, `params`, `implemented` flag (8 implementadas + `participacion` con `implemented:false` per FR-005)
+- [x] T005 [P] Implement taxonomy catalog in `src/lib/interpretacion/taxonomy.ts`: closed extensible list (FR-003) with `id`, `nombreLegible`, `params`, `implemented` flag (13 categorías implementadas; la expansión de entidades y `participacion` está en Phase 8)
 - [x] T006 [P] Implement intent JSON Schema in `src/lib/interpretacion/intent-schema.ts` mirroring `contracts/llm-intent-contract.md` §1 (strict, `additionalProperties:false`, enums exactos)
 - [x] T007 [P] Implement domain guards in `src/lib/interpretacion/validate-intent.ts`: validate `IntentoConsulta` values (año 1960–2100, cargo/categoria conocidos, `valido=false` ⇒ `motivo_rechazo` no nulo), return `{ok, intento | motivoRechazo}`
 - [x] T008 [P] Implement sliding-window rate limiter in `src/lib/seg/rate-limit.ts` (per research.md §3): in-memory timestamps per IP key, prune window, `globalThis` singleton (patrón de `src/lib/db.ts`), env `ASK_RATE_LIMIT_MAX` (10) y `ASK_RATE_LIMIT_WINDOW_MS` (60000)
 - [x] T009 [P] Implement answer cache in `src/lib/seg/answer-cache.ts` (per research.md §4): in-memory Map, key = hash del normalizado (minúsculas, trim, colapso espacios, sin puntuación), TTL `ASK_CACHE_TTL_MS` (600000), max entries `ASK_CACHE_MAX_ENTRIES` (200) con evicción LRU, `globalThis` singleton
-- [x] T010 [P] Write unit tests for domain layer in `tests/unit/interpretacion.test.ts` (taxonomy: 9 categorías, `participacion` no implementada; validate-intent: intentos válidos e inválidos)
+- [x] T010 [P] Write unit tests for domain layer in `tests/unit/interpretacion.test.ts` (taxonomy: 13 categorías, todas implementadas tras la expansión; validate-intent: intentos válidos e inválidos)
 - [x] T011 [P] Write unit tests for seg layer in `tests/unit/seg.test.ts` (rate-limit: ventana deslizante, 429 al superar; cache: normalización de clave, TTL, evicción LRU)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
@@ -128,7 +128,7 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 
 ### Implementation for User Story 3
 
-- [x] T036 [US3] Extend `docs/interpretacion/reglas.md` with `motivo_rechazo` vocabulary and one example each (nacional/provincial, PASO, otra localidad, comparación entre años, confusa) and confirm `participacion` (`implemented:false`) triggers `categoria_no_disponible` (FR-005)
+- [x] T036 [US3] Extend `docs/interpretacion/reglas.md` with `motivo_rechazo` vocabulary and one example each (nacional/provincial, PASO, otra localidad, comparación entre años, confusa); `categoria_no_disponible` queda como mecanismo para categorías futuras con `implemented=false` (la única categoría que lo activaba, `participacion`, pasó a implementada en Phase 8)
 - [x] T037 [P] [US3] Implement rejection message templates in `src/lib/respuestas/templates.ts` for every `tipo` (mensajes honestos, sin cifras, FR-006/FR-007/FR-008)
 - [x] T038 [US3] Implement `sin_datos` detection in `src/lib/consultas/` (`years.ts`/`catalog.ts`): año inexistente o cargo no elegido en ese año (p. ej. intendente en año de solo concejales) → `sin_datos`, y wire `motivo_rechazo` → `tipo` in `src/lib/respuestas/render.ts`
 - [x] T039 [US3] Wire `no_entendida` and `categoria_no_disponible` handling end-to-end in `src/app/api/preguntar/route.ts` (responses 200 con `respuesta.tipo`, nunca 500 para rechazos válidos)
@@ -167,6 +167,26 @@ Variables de entorno nuevas (ver T001): `LLM_API_KEY`, `LLM_MODEL`, `ASK_INTERPR
 - [x] T047 [P] Update documentation: final `.env.example`, `README.md` (variable `ASK_INTERPRETER_MODE`), y `SYSTEM-PROMPT.md` si corresponde
 - [x] T048 Run `specs/002-preguntas-lenguaje-natural/quickstart.md` validation scenarios (flujo principal, sin año, rechazos, casos límite, ritmo, a11y, offline, errores de sistema)
 - [x] T049 Run final quality gate: `npm run lint && npm run typecheck && npm run test && npm run test:e2e` all green
+
+---
+
+## Phase 8: Expansión de entidades — agrupaciones y personas (retro-documentada) 🎯
+
+**Contexto**: trabajo posterior al gate T048/T049 que amplía la taxonomía de 9 a **13 categorías implementadas**: agrega `votos_agrupacion`, `participacion_agrupacion`, `serie_agrupacion` e `historial_persona`, y deja `participacion` **implementada** (cociente votos/padrón, única operación de cómputo del sistema, FR-004). Se documenta a posteriori porque el trabajo se implementó y probó antes de actualizar la documentación y re-correr el gate.
+
+- [x] T050 [P] [Exp] Implement entity query modules in `src/lib/consultas/` (`matching.ts`, `agrupaciones.ts`, `personas.ts`): matcheo normalizado de agrupaciones (exacta → sin paréntesis → contención → ambigua) y de personas (tokens, sin duplicados), votos/participación de agrupación en un año, serie de agrupación transversal e historial de persona con filtro por cargo y detección de ambigüedad
+- [x] T051 [P] [Exp] Extend domain types in `src/lib/types.ts` and `src/lib/interpretacion/validate-intent.ts`: campos `agrupacion`/`persona` + 4 categorías nuevas; categorías que requieren parámetro (agrupación/persona) sin él se degradan a `no_entendida`
+- [x] T052 [P] [Exp] Extend `src/lib/interpretacion/taxonomy.ts` y `src/lib/interpretacion/intent-schema.ts` con las categorías nuevas y los campos `agrupacion`/`persona` (strict, `additionalProperties:false`)
+- [x] T053 [P] [Exp] Extend `src/lib/consultas/catalog.ts` con SQL parametrizado para las categorías nuevas (votos/serie de agrupación, historial de persona) y `participacion`
+- [x] T054 [P] [Exp] Implement plantillas de respuesta en `src/lib/respuestas/templates.ts` (`votos_agrupacion`, `participacion_agrupacion`, `serie_agrupacion`, `historial_persona` con candidatos ambiguos, `participacion`) y el dispatch en `src/lib/respuestas/render.ts` (resolveYear + `sin_datos` + ambigüedad)
+- [x] T055 [P] [Exp] Implement `participacion` en `src/lib/consultas/totales.ts` (cociente votos/padrón, FR-004) con render de "% del padrón"
+- [x] T056 [P] [Exp] Update `docs/interpretacion/reglas.md` (fuente de verdad, FR-019): taxonomía 13 categorías implementadas, vocabulario de entidades, ejemplos (2 por categoría nueva), categorías transversales y prohibición de evaluar desempeños entre años
+- [x] T057 [P] [Exp] Integration tests contra la BD real en `tests/integration/entidades.test.ts`: votos/participación de agrupación, serie de agrupación, historial de persona (exacto, con cargo, apellido ambiguo) y participacion
+- [x] T058 [P] [Exp] Unit tests en `tests/unit/respuestas.test.ts` para plantillas de entidades y participacion
+- [x] T059 [P] [Exp] Extend mock interpreter en `src/lib/interpretacion/llm-interpreter.ts` con intents fijos de entidades y E2E en `tests/e2e/entidades.spec.ts` (Playwright, `ASK_INTERPRETER_MODE=mock`)
+- [x] T060 [Exp] Alinear spec/docs con la taxonomía de 13 categorías y participacion implementada (`spec.md`, `data-model.md`, `contracts/llm-intent-contract.md`, `quickstart.md`, `plan.md`) y re-correr la validación final: `npm run lint && npm run typecheck && npm run test && npm run test:e2e`
+
+**Checkpoint**: gate final de la expansión en verde (T060).
 
 ---
 

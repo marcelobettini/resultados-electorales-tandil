@@ -8,7 +8,7 @@ const CONTRATO =
   "Campos del JSON (todos obligatorios):\n" +
   '- "valido": boolean. true si la pregunta mapea a una categoría de la taxonomía; false si es confusa o fuera de alcance.\n' +
   '- "categoria": string | null. Enum exacto: ganador_eleccion, ganador_intendencia, diferencia_primero_segundo, ranking_top_n, totales_eleccion, bancas_por_partido, personas_electas_cargo, serie_total_votos, participacion, votos_agrupacion, participacion_agrupacion, serie_agrupacion, historial_persona.\n' +
-  '- "cargo": string | null. Enum exacto: intendente, concejales, consejeros_escolares. Solo cargos locales de Tandil; null si la pregunta no pide explícitamente un cargo específico.\n' +
+  '- "cargo": string | null. Enum exacto: intendente, concejales, consejeros_escolares. Solo cargos locales de Tandil; null si la pregunta no pide explícitamente un cargo específico. Para historial_persona el servidor lo ignora (siempre null): la respuesta es el historial completo por cargo.\n' +
   '- "anio": integer | null. Año explícito de 4 dígitos (1960–2100) si la pregunta lo menciona; null en otro caso.\n' +
   '- "es_ultima_eleccion": boolean. true cuando la pregunta pide "la última/más reciente" o no menciona año; el servidor resuelve MAX(anio), nunca el intérprete.\n' +
   '- "limite": integer | null. Solo para ranking_top_n (1–10, el servidor usa 3 por defecto).\n' +
@@ -25,9 +25,10 @@ const EJEMPLOS =
   'Ejemplo de persona: pregunta: "¿En qué años fue electo Miguel Lunghi?" → ' +
   '{"valido":true,"categoria":"historial_persona","cargo":null,"anio":null,"es_ultima_eleccion":false,"limite":null,"agrupacion":null,"persona":"Miguel Lunghi","motivo_rechazo":null}.\n' +
   'Ejemplo de persona con cargo: pregunta: "¿Cuántas veces fue electo intendente Miguel Lunghi?" → ' +
-  '{"valido":true,"categoria":"historial_persona","cargo":"intendente","anio":null,"es_ultima_eleccion":false,"limite":null,"agrupacion":null,"persona":"Miguel Lunghi","motivo_rechazo":null} (el servidor filtra el historial al cargo pedido).\n' +
+  '{"valido":true,"categoria":"historial_persona","cargo":null,"anio":null,"es_ultima_eleccion":false,"limite":null,"agrupacion":null,"persona":"Miguel Lunghi","motivo_rechazo":null} (historial_persona ignora "cargo": siempre devuelve el historial completo por cargo).\n' +
   'Ejemplo de apellido ambiguo: pregunta: "¿Cuántas veces fue electo Lunghi?" → ' +
   '{"valido":true,"categoria":"historial_persona","cargo":null,"anio":null,"es_ultima_eleccion":false,"limite":null,"agrupacion":null,"persona":"Lunghi","motivo_rechazo":null} (persona debe ser "Lunghi", NO "Miguel Lunghi": el servidor detecta que hay varias personas con ese apellido y pide aclaración).\n' +
+  'Regla de historial_persona: para esta categoría el parámetro "cargo" se IGNORA (el servidor lo normaliza a null) y la respuesta siempre es el historial completo por cargo. Una persona puede haber sido electa en varios cargos (por ejemplo Miguel Lunghi fue concejal y luego intendente). En "¿cuántas veces fue elegido X?" o "¿en qué años fue electo X?" poné cargo=null; no completes el cargo por la fama de la persona.\n' +
   'Ejemplo de rechazo: pregunta: "¿Cómo le fue a la UCR desde 1963?" → ' +
   '{"valido":false,"categoria":"ganador_eleccion","cargo":null,"anio":null,"es_ultima_eleccion":true,"limite":null,"agrupacion":null,"persona":null,"motivo_rechazo":"comparacion_partido_entre_anios"}.';
 

@@ -8,7 +8,6 @@ import { getCategoria } from "@/lib/interpretacion/taxonomy";
 import {
   armarRespuesta,
   cargoNoElegidoTemplate,
-  cargoSingular,
   fueraDeAlcanceTemplate,
   noEntendidaTemplate,
   personaAmbiguaTemplate,
@@ -35,7 +34,6 @@ const CATEGORIAS_CON_CARGO: ReadonlySet<CategoriaId> = new Set([
   "ganador_intendencia",
   "bancas_por_partido",
   "personas_electas_cargo",
-  "historial_persona",
 ]);
 
 export async function renderRespuesta(intento: IntentoConsulta): Promise<Respuesta> {
@@ -192,14 +190,13 @@ async function renderSerieAgrupacion(intento: IntentoConsulta): Promise<Respuest
 }
 
 async function renderHistorialPersona(intento: IntentoConsulta): Promise<Respuesta> {
-  const historial = await historialPersona(intento.persona ?? "", intento.cargo);
+  const historial = await historialPersona(intento.persona ?? "");
   const interpretacion = interpretacionDeIntento(intento, intento.anio ?? 0);
 
   if (historial.estado === "no_encontrada") {
-    const como = intento.cargo ? ` como ${cargoSingular(intento.cargo)}` : "";
     return {
       ...armarRespuesta("sin_datos", null, interpretacion),
-      texto: `No encuentro a «${intento.persona}»${como} en los registros de personas electas.`,
+      texto: `No encuentro a «${intento.persona}» en los registros de personas electas.`,
     };
   }
   if (historial.estado === "ambigua") {

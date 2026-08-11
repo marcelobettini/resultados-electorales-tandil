@@ -51,10 +51,20 @@ Batería de preguntas fuera de alcance — cada una recibe su mensaje, **nunca**
 - PASO: "¿Cómo fue el resultado de las PASO?" → solo se publican generales.
 - Otra localidad: "¿Quién ganó en Azul?" → alcance solo Tandil.
 - Comparación del mismo partido entre años: "¿Cómo le fue a la UCR desde 1963?" → no comparable entre elecciones.
-- Categoría reconocida no implementada: "¿Cuál fue el porcentaje de participación en 2023?" → "esta consulta todavía no está disponible".
 - Pregunta confusa: "¿Qué tan azul está el cielo?" → "no entendí, reformulá".
 - Año sin datos: "¿Quién ganó en 1990?" → "No hubo elección municipal en Tandil en 1990".
 - Año sin un cargo: "¿Quién ganó la intendencia en 2015?" (año sin intendente) → indica que ese año no se eligió ese cargo.
+
+> Nota: hoy las 13 categorías de la taxonomía están implementadas, por lo que el mensaje "esta consulta todavía no está disponible" (FR-005) solo aplica a categorías futuras que se agreguen con `implemented=false`.
+
+### 3bis. Entidades: agrupaciones y personas (categorías de la expansión v2)
+
+- "¿Cuántos votos sacó el Partido Justicialista en 2001?" → cifra real de la base + "Interpreté: … votos de una agrupación en un año de 2001".
+- "¿Participó el Partido Justicialista en 2001?" → "Sí, «…» participó …" (o "No, no aparece" si no compitió).
+- "¿En qué elecciones participó la Unión Cívica Radical?" → serie de años con datos, sin evaluar desempeños ("Interpreté: … historial de la agrupación entre años", sin año).
+- "¿En qué años fue electo Miguel Lunghi?" → años/cargos en los que resultó electa la persona.
+- Apellido ambiguo: "¿En qué años fue electo Lunghi?" → lista los candidatos (Lunghi) y pide el nombre completo; nunca elige una persona por su cuenta.
+- "¿Cuál fue el porcentaje de participación en 2019?" → porcentaje calculado votos/padrón (única operación de cómputo del sistema) + "Interpreté: …".
 
 ### 4. Casos límite de datos (FR-010, FR-012)
 
@@ -86,7 +96,7 @@ Batería de preguntas fuera de alcance — cada una recibe su mensaje, **nunca**
 
 ## Criterios de éxito medibles (resumen)
 
-- 95% de las ~10 preguntas del conjunto de referencia respondidas correcta y visiblemente en < 5 s (SC-001).
+- 95% de las ~14 preguntas del conjunto de referencia (categorías de la v1 + entidades) respondidas correcta y visiblemente en < 5 s (SC-001).
 - 100% de las cifras = escrutinio definitivo de la base (SC-002).
 - 100% de las preguntas del conjunto reciben respuesta o explicación coherente (SC-003); 100% de las fuera de alcance explican y jamás inventan (SC-004).
 - 100% de los estados anunciados al AT, sin errores de prioridad crítica en axe (SC-005).

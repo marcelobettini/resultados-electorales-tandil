@@ -7,8 +7,8 @@ El feature **no agrega tablas**: reutiliza la base `resultados_tandil` existente
 ## Principios del modelo
 
 - **Solo lectura**: el feature lee `elecciones`, `agrupaciones` y `electos`; jamás escribe.
-- **Sin cómputo**: cada dato exhibido se lee de su columna (votos, porcentaje, bancas, totales). Un valor `NULL` se señala en la advertencia, nunca se completa con un cálculo.
-- **Una elección a la vez**: las consultas resuelven sobre una elección (o la serie de totales por año, que no compara partidos entre años). Prohibida la comparación de la misma agrupación entre años (principio I).
+- **Sin cómputo**: cada dato exhibido se lee de su columna (votos, porcentaje, bancas, totales). Un valor `NULL` se señala en la advertencia, nunca se completa con un cálculo. Única excepción: el cociente de participación (votantes/padrón) en la categoría `participacion`, señalado como tal (FR-004).
+- **Una elección a la vez**: las consultas resuelven sobre una elección, salvo las categorías transversales (`serie_total_votos`, `serie_agrupacion`, `historial_persona`), que recorren todos los años sin comparar ni evaluar agrupaciones entre años (principio I).
 - **El intérprete no consulta**: el modelo solo produce un intento dentro de una taxonomía cerrada; el SQL lo genera el catálogo de servidor (FR-016).
 
 ## Entidades transitorias
@@ -24,6 +24,8 @@ Objeto intercambiado entre el adaptador de interpretación y la capa de consulta
 | `anio` | `number \| null` | Año explícito de la pregunta. `null` + `es_ultima_eleccion=true` → resolver al más reciente. |
 | `es_ultima_eleccion` | `boolean` | "Última elección" / pregunta sin año → se resuelve a `MAX(anio)` en la capa de consultas (FR-011, sin año fijo). |
 | `limite` | `number \| null` | Solo para `ranking_top_n` (default 3; clamped 1–10). |
+| `agrupacion` | `string \| null` | Solo para `votos_agrupacion`, `participacion_agrupacion` y `serie_agrupacion`: nombre o fragmento tal como lo escribe el usuario. `null` en otro caso. |
+| `persona` | `string \| null` | Solo para `historial_persona`: nombre tal como lo escribe el usuario (sin completar ni inferir nombre de pila). `null` en otro caso. |
 | `valido` | `boolean` | `true` → se ejecuta la categoría; `false` → se renderiza el motivo de rechazo. |
 | `motivo_rechazo` | `MotivoRechazo \| null` | Solo si `valido=false`. Ver enums de rechazo. |
 
@@ -43,7 +45,7 @@ Texto renderizado en el servidor a partir de las cifras de la base y de la inter
 
 Cada entrada tiene un `id`, un nombre legible (para "Interpreté: …"), los parámetros que consume, el mapeo a consulta/plantilla y el flag `implemented`. Fuente de verdad editorial: `docs/interpretacion/reglas.md` (FR-019).
 
-| id | Nombre legible | Params | Consulta sobre | implemented v1 |
+| id | Nombre legible | Params | Consulta sobre | implemented |
 |---|---|---|---|---|
 | `ganador_eleccion` | "ganador de la elección" | año/última | `agrupaciones` top por `votos` del año | ✅ |
 | `ganador_intendencia` | "ganador de la intendencia" | año/última | `agrupaciones` con `obtuvo_intendencia = 1` | ✅ |
@@ -52,10 +54,14 @@ Cada entrada tiene un `id`, un nombre legible (para "Interpreté: …"), los par
 | `totales_eleccion` | "totales de la elección" | año/última | `elecciones` (columnas de totales) | ✅ |
 | `bancas_por_partido` | "bancas por partido" | año/última, `cargo` | `agrupaciones` columnas de bancas por cargo | ✅ |
 | `personas_electas_cargo` | "personas electas por cargo" | año/última, `cargo` | `electos` | ✅ |
-| `serie_total_votos` | "serie del total de votos por año" | (rango opcional) | `elecciones` (`anio`, `total_votos`) | ✅ |
-| `participacion` | "porcentaje de participación" | año/última | requeriría cómputo votos/padrón | ❌ → "todavía no está disponible" |
+| `serie_total_votos` | "serie del total de votos por año" | (todos los años) | `elecciones` (`anio`, `total_votos`) | ✅ |
+| `votos_agrupacion` | "votos de una agrupación en un año" | año/última, `agrupacion` | `agrupaciones` por nombre del año | ✅ |
+| `participacion_agrupacion` | "participación de una agrupación en un año" | año/última, `agrupacion` | `agrupaciones` por nombre del año (sí/no) | ✅ |
+| `serie_agrupacion` | "serie de votos de una agrupación por año" | `agrupacion` | `agrupaciones` + `elecciones` (transversal) | ✅ |
+| `historial_persona` | "historial electoral de una persona" | `persona` (ignora `cargo`: siempre historial completo) | `electos` + `elecciones` (transversal) | ✅ |
+| `participacion` | "porcentaje de participación" | año/última | cociente votos/padrón (única operación de cómputo, FR-004) | ✅ |
 
-**Nota `participacion`**: reconocida pero no implementada (FR-005). Valida de punta a punta el mensaje "esta consulta todavía no está disponible" y respeta el principio II (no se calcula el cociente). Categorías futuras se agregan editando `reglas.md` y el catálogo.
+**Nota `participacion`**: implementada. La única operación de cómputo del sistema es el cociente votos/padrón; el resto de las cifras se lee de columnas precalculadas. El mecanismo de "categoría reconocida no implementada" (FR-005) queda vigente para categorías futuras que se agreguen con `implemented=false`; hoy las 13 categorías están implementadas.
 
 ## Mapeo categoría → columnas de la base (solo lectura, sin cómputo)
 
@@ -115,6 +121,47 @@ Reglas de dominio: empate en el primer/segundo puesto → advertencia explícita
 
 Serie de totales por año: **no** compara partidos entre años (constitución I); es la evolución del total de votos emitidos. Solo texto (sin gráficos en v1). `total_votos` NULL en algún año → se indica en la advertencia.
 
+### `votos_agrupacion`, `participacion_agrupacion`
+
+| Concepto | Columna |
+|---|---|
+| Nombre buscado | `agrupaciones.nombre` (matcheo normalizado del `agrupacion` del intento) |
+| Votos de la agrupación | `agrupaciones.votos` |
+| Porcentaje | `agrupaciones.porcentaje` (NULL pre-~2003 → advertencia) |
+| Año | `agrupaciones.eleccion_id` → `elecciones.id` (`anio`) |
+
+Si la agrupación no aparece en el año → `participacion_agrupacion` responde "No, no aparece"; `votos_agrupacion` responde `sin_datos`. Nombre ambiguo (varias agrupaciones parecidas en el año) → `no_entendida` pidiendo el nombre exacto. El 0 literal es un resultado válido; `votos` NULL se señala.
+
+### `serie_agrupacion` (transversal)
+
+| Concepto | Columna |
+|---|---|
+| Año | `elecciones.anio` |
+| Nombre de la agrupación en cada año | `agrupaciones.nombre` |
+| Votos | `agrupaciones.votos` |
+
+Recorre todas las elecciones mostrando los años con datos para la agrupación buscada (coincidencia por fragmento normalizado). **No evalúa ni compara desempeños** entre años (constitución I); solo expone la serie. Si cambió la denominación entre elecciones, se muestra el nombre de cada año.
+
+### `historial_persona` (transversal)
+
+| Concepto | Columna |
+|---|---|
+| Persona | `electos.nombre_completo` |
+| Cargo | `electos.cargo` ENUM('INTENDENTE','CONCEJAL','CONSEJERO_ESCOLAR') |
+| Condición | `electos.condicion` ('TITULAR','SUPLENTE') |
+| Año | `electos.eleccion_id` → `elecciones.id` (`anio`) |
+
+Muestra **siempre el historial completo** por cargo: los años/cargos en los que la persona resultó electa (sin comparar ni evaluar). El parámetro `cargo` del intento se ignora para esta categoría (se normaliza a `null`): una persona puede haber sido electa en varios cargos (p. ej. Miguel Lunghi fue concejal y luego intendente) y la respuesta desglosa por cargo (intendente, concejal y/o consejero escolar). Apellido ambiguo (varias personas electas con el mismo apellido) → `no_entendida` listando el historial de cada candidato y pidiendo el nombre completo.
+
+### `participacion`
+
+| Concepto | Columna |
+|---|---|
+| Votantes | `elecciones.total_votos` |
+| Padrón | `elecciones.electores_habilitados` |
+
+Única operación de cómputo: `porcentaje = votantes / padrón * 100` (FR-004). Si votantes o padrón son NULL → `sin_datos` indicando que no está disponible el padrón del año.
+
 ## Resolución de año
 
 - `anio` explícito → filtra por `elecciones.anio`. Si no existe fila → `tipo: sin_datos` con "No hubo elección municipal en Tandil en {año}." (edge case, US3-AC5).
@@ -127,7 +174,7 @@ Serie de totales por año: **no** compara partidos entre años (constitución I)
 |---|---|
 | `respuesta` | Consulta OK; texto con cifras de la BD + advertencia opcional + "Interpreté: …". |
 | `fuera_de_alcance` | `IntentoConsulta.valido=false` con motivo `ambito_no_local` / `paso` / `cargo_no_local` / `comparacion_partido_entre_anios`. |
-| `categoria_no_disponible` | Categoría reconocida con `implemented=false`. |
+| `categoria_no_disponible` | Categoría reconocida con `implemented=false` (mecanismo vigente para categorías futuras; hoy no hay ninguna). |
 | `no_entendida` | `motivo_rechazo = no_entendida` (pregunta confusa/irrelevante). |
 | `sin_datos` | Año inexistente o cargo no elegido en ese año. |
 | `error_sistema` | Falla del servicio de interpretación o de la base (nunca una respuesta vacía ni inventada). |

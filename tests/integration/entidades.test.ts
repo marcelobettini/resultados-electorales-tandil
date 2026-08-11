@@ -129,7 +129,19 @@ describe("categorías de entidad contra la BD real", () => {
     expect(resp.texto).toContain(String(personaConHistorial.anio));
   });
 
-  it("historial_persona con apellido ambiguo lista los candidatos en lugar del historial de uno solo", async () => {
+  it("historial_persona sin cargo muestra el desglose por cargo (Lunghi fue concejal y luego intendente)", async () => {
+    const resp = await renderRespuesta(
+      intento({ categoria: "historial_persona", persona: "Miguel Lunghi" })
+    );
+
+    expect(resp.tipo).toBe("respuesta");
+    expect(resp.texto).toContain("intendente");
+    expect(resp.texto).toContain("concejal");
+    expect(resp.texto).toContain("1987");
+    expect(resp.texto).toContain("2003");
+  });
+
+  it("historial_persona con apellido ambiguo lista todos los candidatos y sus cargos", async () => {
     const resp = await renderRespuesta(
       intento({ categoria: "historial_persona", persona: "Lunghi" })
     );
@@ -139,25 +151,25 @@ describe("categorías de entidad contra la BD real", () => {
     expect(resp.texto).toContain("«Lunghi»");
     expect(resp.texto).toContain("LUNGHI, José Emilio");
     expect(resp.texto).toContain("LUNGHI, Miguel Angel");
+    expect(resp.texto).toContain("LUNGHI, Jose Luis");
     expect(resp.texto).toContain("LUNGHI, Sergio Luis");
     expect(resp.texto).toContain("¿A cuál te referís?");
-    expect(resp.texto).not.toContain("resultó electo en 7 cargos");
   });
 
-  it("historial_persona con cargo filtra los registros al cargo pedido", async () => {
+  it("historial_persona ignora el cargo del intento y responde el historial completo", async () => {
     const resp = await renderRespuesta(
       intento({ categoria: "historial_persona", cargo: "intendente", persona: "Miguel Lunghi" })
     );
 
     expect(resp.tipo).toBe("respuesta");
     expect(resp.interpretacion?.categoria).toBe("historial_persona");
-    expect(resp.texto).toContain("resultó electo intendente");
+    expect(resp.texto).toContain("intendente");
+    expect(resp.texto).toContain("concejal");
+    expect(resp.texto).toContain("1987");
     expect(resp.texto).toContain("2003");
-    expect(resp.texto).not.toContain("1987");
-    expect(resp.texto).not.toContain("CONCEJAL");
   });
 
-  it("historial_persona con cargo y apellido ambiguo lista solo los candidatos de ese cargo", async () => {
+  it("historial_persona con apellido ambiguo ignora el cargo y lista todos los candidatos con su historial", async () => {
     const resp = await renderRespuesta(
       intento({ categoria: "historial_persona", cargo: "intendente", persona: "Lunghi" })
     );
@@ -165,8 +177,8 @@ describe("categorías de entidad contra la BD real", () => {
     expect(resp.tipo).toBe("no_entendida");
     expect(resp.texto).toContain("LUNGHI, José Emilio");
     expect(resp.texto).toContain("LUNGHI, Miguel Angel");
-    expect(resp.texto).not.toContain("LUNGHI, Jose Luis");
-    expect(resp.texto).not.toContain("LUNGHI, Sergio Luis");
+    expect(resp.texto).toContain("LUNGHI, Jose Luis");
+    expect(resp.texto).toContain("LUNGHI, Sergio Luis");
   });
 
   it.skipIf(anioPadron === null)(

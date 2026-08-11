@@ -6,7 +6,7 @@
 
 ## Summary
 
-Agregar a la portada un único cuadro de preguntas en lenguaje natural sobre el escrutinio definitivo de Tandil: el usuario escribe una pregunta (p. ej. "¿Qué diferencia de votos hubo entre el primero y el segundo en 2001?"), un servicio externo de lenguaje natural (OpenAI Chat Completions, structured outputs estricto, `temperature: 0`, `seed` fijo, llamado con `fetch` nativo sin dependencias nuevas) interpreta el intento como una categoría de una taxonomía cerrada y extensible, el servidor ejecuta una consulta **predefinida y parametrizada** del catálogo contra la MySQL existente (solo lectura, sin cómputo) y renderiza una respuesta determinística en texto con la línea "Interpreté: …" para auditoría. Estados diferenciados y accesibles (WCAG 2.2 AA) con `role="status"`, limitación de ritmo por IP en ventana deslizante y memoria temporal de respuestas idénticas en la instancia única del servidor; el cuadro se deshabilita en modo offline sin romper el resto de la plataforma. Las reglas de interpretación viven en un único documento fuente de verdad (`docs/interpretacion/reglas.md`, FR-019).
+Agregar a la portada un único cuadro de preguntas en lenguaje natural sobre el escrutinio definitivo de Tandil: el usuario escribe una pregunta (p. ej. "¿Qué diferencia de votos hubo entre el primero y el segundo en 2001?"), un servicio externo de lenguaje natural (OpenAI Chat Completions, structured outputs estricto, `temperature: 0`, `seed` fijo, llamado con `fetch` nativo sin dependencias nuevas) interpreta el intento como una categoría de una taxonomía cerrada y extensible, el servidor ejecuta una consulta **predefinida y parametrizada** del catálogo contra la MySQL existente (solo lectura, sin cómputo) y renderiza una respuesta determinística en texto con la línea "Interpreté: …" para auditoría. La taxonomía cubre 13 categorías implementadas: los 8 ejes de la v1, entidades (votos y participación de una agrupación, serie de una agrupación, historial de una persona) y el porcentaje de participación (cociente votos/padrón, única operación de cómputo). Estados diferenciados y accesibles (WCAG 2.2 AA) con `role="status"`, limitación de ritmo por IP en ventana deslizante y memoria temporal de respuestas idénticas en la instancia única del servidor; el cuadro se deshabilita en modo offline sin romper el resto de la plataforma. Las reglas de interpretación viven en un único documento fuente de verdad (`docs/interpretacion/reglas.md`, FR-019).
 
 ## Technical Context
 
@@ -28,7 +28,7 @@ Agregar a la portada un único cuadro de preguntas en lenguaje natural sobre el 
 - Sin dependencias nuevas de paquetes (llamada LLM con `fetch` nativo; limiter/caché propios).
 - Credenciales del LLM solo en el servidor (FR-016); el usuario no puede influir en la consulta más allá de su pregunta; SQL siempre parametrizado desde un catálogo fijo.
 - Determinismo: structured outputs estricto + `temperature: 0` + `seed` fijo; el intérprete nunca genera SQL ni texto (solo el intento estructurado).
-- Sin cómputo: toda cifra mostrada proviene de columnas precalculadas; NULL se señala, no se completa (principio II, FR-004/FR-010).
+- Sin cómputo: toda cifra mostrada proviene de columnas precalculadas; NULL se señala, no se completa (principio II, FR-004/FR-010). Única excepción: el cociente votos/padrón de `participacion` (FR-004).
 - Reglas de interpretación en un único documento (`docs/interpretacion/reglas.md`), construido desde él el prompt (FR-019).
 - Rate limit: ~10 preguntas/min por IP (ventana deslizante), configurable; memoria temporal con TTL y tamaño acotados (FR-017/FR-018).
 - WCAG 2.2 AA (FR-014) y deshabilitación offline (FR-015).
@@ -41,8 +41,8 @@ Agregar a la portada un único cuadro de preguntas en lenguaje natural sobre el 
 
 | # | Gate (constitución) | Estado |
 |---|---|---|
-| I | Alcance local exclusivo de Tandil; solo elecciones generales y escrutinio definitivo; sin comparación de partidos entre años | ✅ Cumple: la taxonomía restringe `cargo` a intendente/concejales/consejeros escolares y el intérprete rechaza (con explicación, nunca cifras) nacional/provincial, PASO, otras localidades y comparaciones entre años (FR-006/FR-012); `serie_total_votos` es total de votos por año, no de un partido |
-| II | Resultado oficial definitivo, sin cómputo; solo lectura | ✅ Cumple: el catálogo lee columnas precalculadas; `participacion` es reconocida pero **no implementada** justamente por requerir cómputo (valida FR-005 sin violar el principio); respuesta = plantilla sobre cifras de la BD |
+| I | Alcance local exclusivo de Tandil; solo elecciones generales y escrutinio definitivo; sin comparación de partidos entre años | ✅ Cumple: la taxonomía restringe `cargo` a intendente/concejales/consejeros escolares y el intérprete rechaza (con explicación, nunca cifras) nacional/provincial, PASO, otras localidades y comparaciones entre años (FR-006/FR-012); las categorías transversales (`serie_total_votos`, `serie_agrupacion`, `historial_persona`) exponen datos sin evaluar desempeños entre años |
+| II | Resultado oficial definitivo, sin cómputo; solo lectura | ✅ Cumple: el catálogo lee columnas precalculadas; la única operación de cómputo es el cociente votos/padrón de `participacion`, señalado como tal (FR-004); respuesta = plantilla sobre cifras de la BD |
 | III | Fuente de verdad = documento oficial de la Junta; PDF con URL externa; datos completos | ✅ Cumple: las cifras provienen de la misma BD precargada desde los PDFs oficiales; huecos NULL se reportan en la advertencia |
 | IV | Extensibilidad sin cambios estructurales; elección nueva aparece sola | ✅ Cumple: "última elección" se resuelve como `MAX(anio)` en consulta (sin año fijo); al cargar una elección nueva la pregunta pasa a resolverla sola (SC-010); la taxonomía es extensible vía `reglas.md` + catálogo |
 | V | Acceso 100% público sin autenticación | ✅ Cumple: `/api/preguntar` es público; la limitación de ritmo por IP es protección operacional, no autenticación |
@@ -95,6 +95,9 @@ src/
     ├── consultas/
     │   ├── catalog.ts             # categoria + cargo → consulta predefinida (SQL parametrizado)
     │   ├── years.ts               # resolveYear(anio | es_ultima_eleccion) → MAX(anio)
+    │   ├── matching.ts            # Matcheo normalizado de agrupaciones y personas (exacta/contención/ambigua)
+    │   ├── agrupaciones.ts        # votos/participación de agrupación en un año + serie de agrupación
+    │   ├── personas.ts            # historial electoral de una persona (con cargo y ambigüedad)
     │   └── (ganador.ts, diferencia.ts, ranking.ts, totales.ts, bancas.ts,
     │        electos.ts, serie.ts) # Consultas por categoría (solo lectura, sin cómputo)
     ├── respuestas/

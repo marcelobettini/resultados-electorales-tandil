@@ -34,7 +34,7 @@ El spec fija la arquitectura (no cambiar): un solo cuadro en la portada, un serv
 **Rationale**:
 - La traducción "intento → consulta" está en código de servidor de confianza: el modelo solo elige dentro de una taxonomía cerrada; el SQL se construye con parámetros tipados. Imposible inyección por pregunta.
 - "Última elección" se resuelve en la capa de consultas (`MAX(anio)` con datos), sin año fijo (FR-011, SC-010): una elección nueva aparece sola.
-- La taxonomía tiene un flag `implemented` por categoría (FR-005): las reconocidas pero no implementadas responden "esta consulta todavía no está disponible". Para poder validar ese camino de punta a punta, la taxonomía v1 incluye una categoría **reconocida pero no implementada**: `participacion` (porcentaje de participación padrón/votantes) — además respeta el principio II (no cómputo).
+- La taxonomía tiene un flag `implemented` por categoría (FR-005): las reconocidas pero no implementadas responden "esta consulta todavía no está disponible". Para poder validar ese camino de punta a punta, la taxonomía v1 incluía una categoría **reconocida pero no implementada**: `participacion` (porcentaje de participación padrón/votantes). **Actualización (Phase 8)**: `participacion` se implementó (FR-004) como el único cómputo permitido del sistema — cociente votos/padrón; el mecanismo FR-005 queda vigente para categorías futuras con `implemented: false`. Hoy no hay ninguna.
 
 **Alternatives considered**: dejar que el modelo redacte la consulta (rechazado: rompe FR-016 y el determinismo); traducir a SQL en el cliente (rechazado: exponería la base).
 

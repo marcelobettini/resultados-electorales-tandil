@@ -60,18 +60,6 @@ test.describe("Preguntas fuera de alcance (US3 / SC-004)", () => {
     });
   }
 
-  test("participacion: responde que todavía no está disponible, sin cifras", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    const texto = await preguntar(
-      page,
-      "¿cuál fue la participación en 2011?",
-      /todavía no está disponible/
-    );
-    expect(texto).not.toMatch(/\d/);
-  });
-
   test("pregunta confusa: pide reformular, sin cifras", async ({ page }) => {
     await page.goto("/");
     const texto = await preguntar(page, "¿por qué brilla el sol?", /reformul/i);

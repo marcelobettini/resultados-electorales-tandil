@@ -1,6 +1,5 @@
 import mysql from "mysql2/promise";
 import { db } from "@/lib/db";
-import type { CargoLocal } from "@/lib/types";
 import { buscarPersona, coincidePersona, normalizar } from "./matching";
 
 export interface HistorialPersonaRow {
@@ -49,15 +48,8 @@ function agruparCandidatos(rows: ElectoRow[]): CandidatoPersona[] {
   }));
 }
 
-const CARGO_ELECTOS: Record<CargoLocal, string> = {
-  intendente: "INTENDENTE",
-  concejales: "CONCEJAL",
-  consejeros_escolares: "CONSEJERO_ESCOLAR",
-};
-
 export async function historialPersona(
-  consulta: string,
-  cargo?: CargoLocal | null
+  consulta: string
 ): Promise<ResultadoHistorialPersona> {
   const tokens = normalizar(consulta).split(" ").filter(Boolean);
   if (tokens.length === 0) {
@@ -66,20 +58,13 @@ export async function historialPersona(
   const apellido = tokens[tokens.length - 1];
   const like = `%${apellido}%`;
 
-  const condiciones = ["LOWER(el.nombre_completo) LIKE ?"];
-  const params: Array<string> = [like];
-  if (cargo) {
-    condiciones.push("el.cargo = ?");
-    params.push(CARGO_ELECTOS[cargo]);
-  }
-
   const [rows] = await db.query<ElectoRow[]>(
     `SELECT e.anio, el.cargo, el.condicion, el.nombre_completo
      FROM electos el
      JOIN elecciones e ON e.id = el.eleccion_id
-     WHERE ${condiciones.join(" AND ")}
+     WHERE LOWER(el.nombre_completo) LIKE ?
      ORDER BY e.anio ASC, el.cargo ASC`,
-    params
+    [like]
   );
 
   const busqueda = buscarPersona(

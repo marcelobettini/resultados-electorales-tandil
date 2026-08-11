@@ -167,6 +167,9 @@ export function parseIntento(raw: unknown): IntentoParseado {
     if (intento.categoria !== "historial_persona") {
       intento.persona = null;
     }
+    if (intento.categoria === "historial_persona") {
+      intento.cargo = null;
+    }
     return { ok: true, intento };
   }
   if (!dominioValido(r)) {

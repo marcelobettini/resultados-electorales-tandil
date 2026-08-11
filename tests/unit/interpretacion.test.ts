@@ -221,6 +221,21 @@ describe("parseIntento", () => {
     }
   });
 
+  it("normaliza cargo a null para historial_persona (el historial siempre es completo por cargo)", () => {
+    const result = parseIntento({
+      ...baseIntento(),
+      categoria: "historial_persona",
+      cargo: "intendente",
+      anio: null,
+      persona: "Miguel Lunghi",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.intento.cargo).toBeNull();
+      expect(result.intento.persona).toBe("Miguel Lunghi");
+    }
+  });
+
   it("acepta valido:false con motivo_rechazo valido (paso) pasándolo tal cual", () => {
     const result = parseIntento({
       valido: false,

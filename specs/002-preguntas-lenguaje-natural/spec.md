@@ -87,6 +87,7 @@ Una persona con discapacidad visual usa un lector de pantalla: el cuadro tiene u
 - **Empate entre el primero y el segundo**: se reporta explícitamente (aviso de advertencia); el sistema no elige un "segundo puesto" arbitrario.
 - **Huecos de datos (valores faltantes) en actas viejas**: porcentaje no disponible antes de ~2003, padrón y totales NULL en parte del histórico: se mencionan en la advertencia de la respuesta, no se omiten en silencio ni se completan con valores calculados.
 - **Partido que compitió y sacó 0 votos** vs. **partido sin dato**: el 0 literal es un resultado válido; el dato faltante (NULL) se señala en la advertencia.
+- **Agrupación o persona ambiguas** (p. ej. apellido compartido por varias personas electas): el sistema responde con los candidatos y pide reformular indicando el nombre completo; nunca elige una por su cuenta.
 - **1963**: no se eligió el cargo de "Intendente" por separado; el sistema no aplica reglas en tiempo de consulta porque la fila ya está resuelta en los datos.
 - **Patrón bienal desde 1965**: un año con intendente y el siguiente sin él es normal; no se señala como anomalía.
 - **Año sin elección de un cargo determinado** (p. ej. intendente en años de solo concejales): la respuesta lo indica y usa los datos disponibles de ese año.
@@ -100,8 +101,8 @@ Una persona con discapacidad visual usa un lector de pantalla: el cuadro tiene u
 
 - **FR-001**: La portada MUST mostrar un único cuadro de preguntas en lenguaje natural, con una etiqueta visible, sin hilo de conversación.
 - **FR-002**: Cada envío MUST reemplazar por completo la respuesta anterior; el sistema no acumula historial ni mantiene una conversación entre turnos.
-- **FR-003**: El sistema MUST reconocer al menos las siguientes categorías de pregunta (taxonomía cerrada y extensible): ganador de la elección; ganador de la intendencia; diferencia de votos entre el primero y el segundo; ranking de los N primeros; totales de una elección (votantes, padrón, votos válidos, blancos, nulos, mesas); bancas por partido; personas electas por cargo; y serie del total de votos por año.
-- **FR-004**: Toda respuesta con cifras MUST derivarse exclusivamente de los valores del escrutinio definitivo almacenados en la base; el sistema nunca genera, calcula ni inventa cifras.
+- **FR-003**: El sistema MUST reconocer al menos las siguientes categorías de pregunta (taxonomía cerrada y extensible): ganador de la elección; ganador de la intendencia; diferencia de votos entre el primero y el segundo; ranking de los N primeros; totales de una elección (votantes, padrón, votos válidos, blancos, nulos, mesas); bancas por partido; personas electas por cargo; serie del total de votos por año; votos de una agrupación en un año; participación de una agrupación en un año (sí/no); serie de votos de una agrupación por año; historial electoral de una persona; y porcentaje de participación.
+- **FR-004**: Toda respuesta con cifras MUST derivarse exclusivamente de los valores del escrutinio definitivo almacenados en la base; el sistema nunca genera ni inventa cifras. La única operación de cómputo permitida es el cociente de participación (votantes sobre padrón) en la categoría `participacion`, señalado como tal.
 - **FR-005**: Las preguntas cuya categoría esté reconocida pero aún no implementada MUST recibir "esta consulta todavía no está disponible", y el sistema no debe intentar responderlas.
 - **FR-006**: Las preguntas fuera del alcance del dataset (cargos provinciales/nacionales, PASO, otras localidades, comparación del mismo partido entre años) MUST recibir una explicación clara y honesta, nunca una respuesta con cifras.
 - **FR-007**: Las preguntas confusas o sin relación con las elecciones municipales de Tandil MUST recibir un mensaje de reformulación ("no entendí, reformulá").
@@ -123,16 +124,16 @@ Una persona con discapacidad visual usa un lector de pantalla: el cuadro tiene u
 
 - **Elección**: edición de una elección general local (año y fecha), con datos generales (electores habilitados, mesas, votos positivos/en blanco/nulos, total) —algunos NULL-ables en actas antiguas—. Es la unidad sobre la que se resuelven las preguntas.
 - **Agrupación**: lista/partido/frente que compitió en una elección, con votos, porcentaje (no disponible antes de ~2003) y bancas precalculadas. No es un catálogo maestro: nombres y números se reciclan y cambian entre elecciones, por lo que no es comparable entre años.
-- **Persona Electa**: persona electa (titular/suplente) para un cargo en una elección, asociada a su agrupación. Se usa para las preguntas de "personas electas" y "bancas".
-- **Consulta (intento)**: la pregunta en lenguaje natural del usuario junto con su interpretación estructurada (año, categoría, cargo, límite, condiciones). No se persiste; es el objeto de intercambio que permite renderizar la respuesta y la línea "Interpreté: …" para auditoría.
+- **Persona Electa**: persona electa (titular/suplente) para un cargo en una elección, asociada a su agrupación. Se usa para las preguntas de "personas electas", "bancas" e "historial de una persona".
+- **Consulta (intento)**: la pregunta en lenguaje natural del usuario junto con su interpretación estructurada (año, categoría, cargo, límite, agrupación, persona, condiciones). No se persiste; es el objeto de intercambio que permite renderizar la respuesta y la línea "Interpreté: …" para auditoría.
 - **Respuesta**: texto determinístico renderizado a partir de las cifras de la base, compuesto por el resultado, la advertencia (si aplica) y la interpretación ("Interpreté: …"). Las cifras siempre provienen de la base, nunca de la interpretación.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: El 95% de las preguntas válidas de un conjunto de referencia de ~10 preguntas (que cubre las categorías de la v1) recibe una respuesta correcta y visible en menos de 5 segundos desde el envío.
-- **SC-002**: El 100% de las cifras mostradas en las respuestas coincide con los valores oficiales del escrutinio definitivo almacenados en la base; ninguna cifra es generada ni calculada por el sistema.
+- **SC-001**: El 95% de las preguntas válidas de un conjunto de referencia de ~14 preguntas (que cubre las categorías de la v1 y las de entidad: agrupaciones y personas) recibe una respuesta correcta y visible en menos de 5 segundos desde el envío.
+- **SC-002**: El 100% de las cifras mostradas en las respuestas coincide con los valores oficiales del escrutinio definitivo almacenados en la base; ninguna cifra es generada ni calculada por el sistema, salvo el cociente de participación (FR-004), que usa votantes y padrón de la base.
 - **SC-003**: El 100% de las preguntas del conjunto de referencia recibe una respuesta o una explicación correcta y coherente con su intención (sin respuestas fabricadas ni desviadas).
 - **SC-004**: El 100% de las preguntas fuera de alcance o prohibidas recibe una explicación clara; en ningún caso se muestra una cifra inventada.
 - **SC-005**: El 100% de los estados de la interfaz (carga, resultado, fuera de alcance, sin datos, error) es anunciado correctamente a lectores de pantalla, verificado con auditoría automatizada de accesibilidad (sin errores de prioridad crítica) y recorrido manual de teclado.
@@ -146,7 +147,7 @@ Una persona con discapacidad visual usa un lector de pantalla: el cuadro tiene u
 
 - Idioma: español (preguntas, respuestas, mensajes de estado y la línea "Interpreté: …").
 - Se reutiliza la base de datos existente y sus datos precargados (escrutinio definitivo); la función solo lee y nunca modifica la base.
-- El conjunto de referencia de ~10 preguntas cubre las categorías de la v1 e incluye casos límite (empate, año sin datos, última elección, fuera de alcance).
+- El conjunto de referencia de ~14 preguntas cubre las categorías de la v1 y las categorías de entidad (agrupaciones y personas), e incluye casos límite (empate, año sin datos, última elección, fuera de alcance).
 - "Última elección" se interpreta como el año más reciente con datos; no existe un año fijo.
 - Límite de ritmo por defecto: un máximo del orden de ~10 preguntas por minuto por visitante, configurable en el despliegue.
 - La memoria temporal de respuestas tiene tamaño y vigencia acotados; es una optimización y nunca la fuente de verdad (la fuente es el escrutinio definitivo).

@@ -193,40 +193,50 @@ export function serieAgrupacionTemplate(datos: TemplateData): string {
   return `«${agrupacion}» participó en ${serieAgrupacion.length} elecciones (${anos}):\n${lineas.join("\n")}`;
 }
 
-const CARGO_SINGULAR: Record<CargoLocal, string> = {
-  intendente: "intendente",
-  concejales: "concejal",
-  consejeros_escolares: "consejero escolar",
-};
-
-export function cargoSingular(cargo: CargoLocal): string {
-  return CARGO_SINGULAR[cargo];
-}
-
 function listarAnios(anios: number[]): string {
   const partes = anios.map(String);
   if (partes.length <= 1) return partes.join("");
   return `${partes.slice(0, -1).join(", ")} y ${partes[partes.length - 1]}`;
 }
 
+const ORDEN_HISTORIAL_CARGO = ["INTENDENTE", "CONCEJAL", "CONSEJERO_ESCOLAR"];
+
+function agruparHistorial(
+  historial: NonNullable<TemplateData["historial"]>
+): Array<[string, number[]]> {
+  const porCargo = new Map<string, number[]>();
+  for (const registro of historial) {
+    const anios = porCargo.get(registro.cargo) ?? [];
+    anios.push(registro.anio);
+    porCargo.set(registro.cargo, anios);
+  }
+  return [...porCargo.entries()].sort((a, b) => {
+    const ia = ORDEN_HISTORIAL_CARGO.indexOf(a[0]);
+    const ib = ORDEN_HISTORIAL_CARGO.indexOf(b[0]);
+    return (ia === -1 ? ORDEN_HISTORIAL_CARGO.length : ia) -
+      (ib === -1 ? ORDEN_HISTORIAL_CARGO.length : ib);
+  });
+}
+
 export function historialPersonaTemplate(datos: TemplateData): string {
-  const { persona, historial, cargo } = datos;
+  const { persona, historial } = datos;
   if (!historial || historial.length === 0) {
     return `No hay registros de elección de «${persona}».`;
   }
-  if (cargo) {
-    const anios = historial.map((registro) => registro.anio);
-    const oportunidades = anios.length === 1 ? "oportunidad" : "oportunidades";
-    return `«${persona}» resultó electo ${cargoSingular(cargo)} en ${
-      anios.length
-    } ${oportunidades}: ${listarAnios(anios)}.`;
+
+  const grupos = agruparHistorial(historial);
+  if (grupos.length === 1) {
+    const [cargoNombre, anios] = grupos[0];
+    const veces = anios.length === 1 ? "vez" : "veces";
+    return `«${persona}» resultó electo ${anios.length} ${veces} como ${cargoNombre.toLowerCase()} (${listarAnios(anios)}).`;
   }
-  const lineas = historial.map(
-    (registro) => `${registro.anio}: ${registro.cargo} (${registro.condicion})`
-  );
-  return `«${persona}» resultó electo en ${historial.length} cargos entre ${historial[0].anio} y ${
-    historial[historial.length - 1].anio
-  }:\n${lineas.join("\n")}`;
+
+  const lineas = grupos.map(([cargoNombre, anios]) => {
+    const veces = anios.length === 1 ? "vez" : "veces";
+    return `${anios.length} ${veces} como ${cargoNombre.toLowerCase()} (${listarAnios(anios)})`;
+  });
+  const veces = historial.length === 1 ? "vez" : "veces";
+  return `«${persona}» resultó electo ${historial.length} ${veces}: ${lineas.join(" y ")}.`;
 }
 
 export interface CandidatoPersonaTemplate {

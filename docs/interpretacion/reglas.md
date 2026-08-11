@@ -40,7 +40,7 @@ Categorías de la taxonomía cerrada y extensible (FR-003). `id` es el valor exa
 | `votos_agrupacion`           | votos de una agrupación en un año         | año/última, `agrupacion`      | `agrupaciones.votos`, `agrupaciones.nombre`, `agrupaciones.porcentaje`                                                                                                    | true        |
 | `participacion_agrupacion`   | participación de una agrupación en un año | año/última, `agrupacion`      | `agrupaciones.nombre`                                                                                                                                                     | true        |
 | `serie_agrupacion`           | serie de votos de una agrupación por año  | `agrupacion`                  | `agrupaciones.votos`, `agrupaciones.nombre`, `elecciones.anio`                                                                                                            | true        |
-| `historial_persona`          | historial electoral de una persona        | `persona`, `cargo` (opcional) | `electos.nombre_completo`, `electos.cargo`, `electos.condicion`, `elecciones.anio`                                                                                        | true        |
+| `historial_persona`          | historial electoral de una persona (siempre completo, por cargo) | `persona`                     | `electos.nombre_completo`, `electos.cargo`, `electos.condicion`, `elecciones.anio`                                                                                        | true        |
 | `participacion`              | porcentaje de participación               | año/última                    | `elecciones.total_votos`, `elecciones.electores_habilitados` (cociente calculado)                                                                                         | true        |
 
 Las categorías `ganador_eleccion`, `ganador_intendencia`, `diferencia_primero_segundo`, `ranking_top_n`, `totales_eleccion`, `bancas_por_partido`, `personas_electas_cargo`, `votos_agrupacion`, `participacion_agrupacion` y `participacion` se resuelven dentro de una única elección (por `anio` o por la más reciente). `serie_total_votos`, `serie_agrupacion` e `historial_persona` son transversales: recorren todos los años y nunca comparan agrupaciones entre años.
@@ -144,11 +144,35 @@ Cada ejemplo lista la pregunta en lenguaje natural y el intento esperado (catego
 - "¿Cómo evolucionó el total de votos a lo largo de los años?" → `valido=true`, `categoria=serie_total_votos`, `anio=null`, `es_ultima_eleccion=false`.
 - "¿Cuánta gente votó en cada elección desde 1983?" → `valido=true`, `categoria=serie_total_votos`.
 
-### Categoría reconocida no implementada
+**`votos_agrupacion`**
+
+- "¿Cuántos votos sacó el Partido Justicialista en 2001?" → `valido=true`, `categoria=votos_agrupacion`, `agrupacion="Partido Justicialista"`, `anio=2001`.
+- "¿Cuánta gente votó al Frente Renovador en la última elección?" → `valido=true`, `categoria=votos_agrupacion`, `agrupacion="Frente Renovador"`, `es_ultima_eleccion=true`.
+
+**`participacion_agrupacion`**
+
+- "¿Participó el Partido Justicialista en 2001?" → `valido=true`, `categoria=participacion_agrupacion`, `agrupacion="Partido Justicialista"`, `anio=2001`.
+- "¿El PRO se presentó en las últimas elecciones?" → `valido=true`, `categoria=participacion_agrupacion`, `agrupacion="PRO"`, `es_ultima_eleccion=true`.
+
+**`serie_agrupacion`**
+
+- "¿En qué elecciones participó la Unión Cívica Radical?" → `valido=true`, `categoria=serie_agrupacion`, `agrupacion="Unión Cívica Radical"`, `anio=null` (transversal; sin año).
+- "¿Cuántos votos sacó el peronismo en cada elección?" → `valido=true`, `categoria=serie_agrupacion`, `agrupacion="peronismo"`, `anio=null`.
+
+**`historial_persona`**
+
+- "¿En qué años fue electo Miguel Lunghi?" → `valido=true`, `categoria=historial_persona`, `persona="Miguel Lunghi"`, `cargo=null`.
+- "¿Cuántas veces fue elegido Lunghi?" → `valido=true`, `categoria=historial_persona`, `persona="Lunghi"`, `cargo=null` (el servidor detecta que hay varias personas con ese apellido y pide aclaración, listando el historial completo de cada una).
+- "¿Cuántas veces fue electo intendente Lunghi?" → `valido=true`, `categoria=historial_persona`, `persona="Lunghi"`, `cargo=null`.
+
+> **`historial_persona` siempre devuelve el historial completo**: el servidor ignora `cargo` para esta categoría (se normaliza a `null`). Una persona puede haber sido electa en varios cargos (p. ej. Miguel Lunghi fue concejal en 1987 y luego intendente); la respuesta muestra el desglose por cargo (intendente, concejal y/o consejero escolar). El intérprete no elige ni infiere un cargo para esta categoría.
 
 **`participacion`**
 
-- "¿Cuál fue el porcentaje de participación en 2019?" → `valido=true`, `categoria=participacion`, `anio=2019`; el servidor responde "esta consulta todavía no está disponible" (`tipo=categoria_no_disponible`), sin cifras.
+- "¿Cuál fue el porcentaje de participación en 2019?" → `valido=true`, `categoria=participacion`, `anio=2019`; el servidor calcula el cociente votos/padrón (única operación de cómputo del sistema).
+- "¿Cuánta gente fue a votar en proporción en las últimas elecciones?" → `valido=true`, `categoria=participacion`, `es_ultima_eleccion=true`.
+
+> **Categorías reconocidas no implementadas**: el mecanismo de FR-005 queda vigente para categorías futuras que se agreguen a la taxonomía con `implemented=false`. Hoy no hay ninguna: las 13 categorías de la taxonomía están implementadas.
 
 ### Rechazos (un ejemplo por `motivo_rechazo`)
 
@@ -174,12 +198,13 @@ Cada ejemplo lista la pregunta en lenguaje natural y el intento esperado (catego
 
 ### Reglas de dominio
 
-- **Comparación entre años prohibida**: los nombres y números de lista de las agrupaciones cambian entre elecciones y los sublemas están colapsados al frente, por lo que la misma etiqueta no representa lo mismo en años distintos. Cualquier pregunta que compare la misma agrupación entre años se rechaza. La `serie_total_votos` es la única categoría transversal y solo compara el total de votos emitidos por año, nunca agrupaciones.
+- **Comparación entre años prohibida**: los nombres y números de lista de las agrupaciones cambian entre elecciones y los sublemas están colapsados al frente, por lo que la misma etiqueta no representa lo mismo en años distintos. Cualquier pregunta que **evalúe o compare el desempeño** de una misma agrupación entre años (con juicio de valor: "cómo le fue", "evolución del desempeño") se rechaza. Las categorías transversales (`serie_total_votos`, `serie_agrupacion`, `historial_persona`) solo **exponen los datos sin comparar ni evaluar**: el total de votos por año, la serie de votos de una agrupación y los años/cargos en los que una persona resultó electa; nunca mezclan nombres de agrupaciones entre elecciones.
 - **Empates**: si dos o más agrupaciones empatan en un puesto (primero/segundo/N), el sistema lo reporta explícitamente en la advertencia y **no elige un segundo puesto arbitrario**. El intérprete no decide ganadores en empate: solo emite la categoría; la consulta y la plantilla detectan y comunican el empate.
 - **0 literal vs NULL**: el valor 0 es un resultado válido (una agrupación que compitió y no obtuvo votos); `NULL` es un dato faltante. Se distinguen: el 0 se informa como cifra; el `NULL` se señala como hueco en la advertencia.
 - **1963 ya resuelto en los datos**: en 1963 no se eligió el cargo de intendente por separado; esa resolución ya está fijada en los datos (`elige_intendente=0`). El sistema no aplica reglas especiales de 1963 en tiempo de consulta; la consulta solo indica que ese año no se eligió el cargo.
 - **Patrón bienal normal**: desde 1965 la alternancia es normal (un año con intendente, el siguiente sin él). No se señala como anomalía ni se interpreta como dato faltante.
 - **Cargo no elegido en el año**: si el cargo pedido no se eligió en el año resuelto (p. ej. intendente en un año de solo concejales), el sistema responde `sin_datos` con un aviso; no inventa ni extrapola.
+- **`historial_persona` sin cargo**: para esta categoría el servidor ignora el parámetro `cargo` (lo normaliza a `null`) y siempre responde el historial completo por cargo (intendente, concejal y/o consejero escolar). En preguntas genéricas de persona ("¿cuántas veces fue elegido X?", "¿en qué años fue electo X?", "¿qué cargos tuvo X?"), el intérprete pone `cargo=null`; el cargo que la persona tuvo en la vida real no se usa para completar el intento.
 - **El intérprete no consulta la base**: el intérprete produce solo el intento estructurado; nunca SQL ni texto de respuesta. La traducción a consulta y el renderizado son responsabilidad del servidor.
 - **Año sin datos**: si el año resuelto no existe en la base, el servidor responde `sin_datos` ("No hubo elección municipal en Tandil en {año}."). No es un rechazo de interpretación.
 

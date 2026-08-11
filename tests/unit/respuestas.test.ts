@@ -200,7 +200,7 @@ describe("plantillas de consulta", () => {
 });
 
 describe("historialPersonaTemplate", () => {
-  it("sin cargo lista todos los cargos de la persona", () => {
+  it("sin cargo agrupa por cargo con conteo y años", () => {
     const texto = historialPersonaTemplate(
       datosBase({
         persona: "LUNGHI, Miguel Angel",
@@ -211,12 +211,25 @@ describe("historialPersonaTemplate", () => {
         ],
       })
     );
-    expect(texto).toContain("1987: CONCEJAL (TITULAR)");
-    expect(texto).toContain("2003: INTENDENTE (TITULAR)");
-    expect(texto).toContain("2 cargos entre 1987 y 2003");
+    expect(texto).toContain("resultó electo 2 veces");
+    expect(texto).toContain("1 vez como intendente (2003)");
+    expect(texto).toContain("1 vez como concejal (1987)");
   });
 
-  it("con cargo resume solo los años de ese cargo", () => {
+  it("sin cargo y un solo cargo no repite el conteo", () => {
+    const texto = historialPersonaTemplate(
+      datosBase({
+        persona: "LUNGHI, Jose Luis",
+        cargo: null,
+        historial: [{ anio: 1991, cargo: "CONCEJAL", condicion: "TITULAR" }],
+      })
+    );
+    expect(texto).toBe(
+      "«LUNGHI, Jose Luis» resultó electo 1 vez como concejal (1991)."
+    );
+  });
+
+  it("ignora el cargo del intento y agrupa el historial completo", () => {
     const texto = historialPersonaTemplate(
       datosBase({
         persona: "LUNGHI, Miguel Angel",
@@ -229,9 +242,9 @@ describe("historialPersonaTemplate", () => {
         ],
       })
     );
-    expect(texto).toContain("resultó electo intendente en 4 oportunidades");
+    expect(texto).toContain("resultó electo 4 veces");
+    expect(texto).toContain("4 veces como intendente");
     expect(texto).toContain("2003, 2015, 2019 y 2023");
-    expect(texto).not.toContain("CONCEJAL");
   });
 });
 

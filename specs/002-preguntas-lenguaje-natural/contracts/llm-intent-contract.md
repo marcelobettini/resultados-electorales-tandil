@@ -24,7 +24,11 @@ El adapter pide al proveedor una salida que cumpla este esquema (structured outp
         "bancas_por_partido",
         "personas_electas_cargo",
         "serie_total_votos",
-        "participacion"
+        "participacion",
+        "votos_agrupacion",
+        "participacion_agrupacion",
+        "serie_agrupacion",
+        "historial_persona"
       ]
     },
     "cargo": {
@@ -34,6 +38,8 @@ El adapter pide al proveedor una salida que cumpla este esquema (structured outp
     "anio": { "type": ["integer", "null"] },
     "es_ultima_eleccion": { "type": "boolean" },
     "limite": { "type": ["integer", "null"] },
+    "agrupacion": { "type": ["string", "null"] },
+    "persona": { "type": ["string", "null"] },
     "motivo_rechazo": {
       "type": ["string", "null"],
       "enum": [
@@ -52,6 +58,8 @@ El adapter pide al proveedor una salida que cumpla este esquema (structured outp
     "anio",
     "es_ultima_eleccion",
     "limite",
+    "agrupacion",
+    "persona",
     "motivo_rechazo"
   ],
   "additionalProperties": false
@@ -67,7 +75,9 @@ El adapter pide al proveedor una salida que cumpla este esquema (structured outp
 | `anio` | Año explícito si la pregunta lo menciona. Si la pregunta pide "la última" o no da año → `anio: null` + `es_ultima_eleccion: true`. |
 | `es_ultima_eleccion` | El servidor resuelve al año más reciente con datos (`MAX(anio)`), nunca el intérprete (FR-011). |
 | `limite` | Solo para `ranking_top_n`; el servidor lo clampa a 1–10 con default 3. |
-| `cargo` | Solo cargos locales de Tandil. Si la pregunta menciona un cargo nacional/provincial (gobernador, presidente, diputado) → `valido=false` + `motivo_rechazo: cargo_no_local`. |
+| `agrupacion` | Solo para `votos_agrupacion`, `participacion_agrupacion` y `serie_agrupacion`: el nombre o fragmento de la agrupación **tal como lo escribe el usuario**; `null` en otro caso. No se completa ni se infiere el nombre oficial. |
+| `persona` | Solo para `historial_persona`: el nombre **tal como lo escribe el usuario**, sin completar el nombre de pila (si escribe solo el apellido, se envía solo el apellido; el servidor detecta la ambigüedad y pide aclaración); `null` en otro caso. |
+| `cargo` | Solo cargos locales de Tandil. Si la pregunta menciona un cargo nacional/provincial (gobernador, presidente, diputado) → `valido=false` + `motivo_rechazo: cargo_no_local`. Para `historial_persona` el servidor lo ignora (lo normaliza a `null`): la respuesta siempre es el historial completo por cargo. |
 | `motivo_rechazo` | `no_entendida` (confusa/irrelevante) · `ambito_no_local` (otra localidad/PBA/nación, pero cargo genérico) · `paso` (menciona PASO) · `cargo_no_local` · `comparacion_partido_entre_anios` ("¿cómo le fue a X desde 1963?"). |
 
 ### Mapeo a `tipo` de respuesta (ver [data-model.md](../data-model.md))
@@ -77,7 +87,7 @@ El adapter pide al proveedor una salida que cumpla este esquema (structured outp
 | `valido=true` | `respuesta` (o `sin_datos` si el año/cargo no existe, detectado en consulta) |
 | `valido=false` + `motivo_rechazo: no_entendida` | `no_entendida` |
 | `valido=false` + `ambito_no_local`/`paso`/`cargo_no_local`/`comparacion_partido_entre_anios` | `fuera_de_alcance` |
-| `valido=true` + categoría con `implemented=false` (p. ej. `participacion`) | `categoria_no_disponible` |
+| `valido=true` + categoría con `implemented=false` | `categoria_no_disponible` (mecanismo vigente para categorías futuras; hoy las 13 categorías de la taxonomía están implementadas) |
 
 ## 2. Request al proveedor (adaptador OpenAI, `fetch` nativo)
 
