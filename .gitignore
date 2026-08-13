@@ -1,1 +1,41 @@
+# opencode
 .opencode/
+
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+build/
+
+# production
+dist/
+
+# service worker (generado por @serwist/next en build)
+public/sw.js
+public/sw.js.map
+public/swe-worker.js
+
+# misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# env files
+.env
+.env*.local
+
+# test
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
