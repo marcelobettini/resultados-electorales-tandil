@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import QuestionBox from "@/components/question-box";
 
@@ -35,6 +35,20 @@ function serverErrorResponse(): Response {
   );
 }
 
+function healthOkResponse(): Response {
+  return new Response(JSON.stringify({ ok: true, db: true }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function healthDownResponse(): Response {
+  return new Response(JSON.stringify({ ok: false, db: false }), {
+    status: 503,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 const RESPUESTA_DIFERENCIA = {
   tipo: "respuesta",
   texto: "El primer puesto fue «Agrupación A» con 21.000 votos.",
@@ -44,8 +58,26 @@ const RESPUESTA_DIFERENCIA = {
 describe("QuestionBox", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
+  function preguntarCalls(): unknown[][] {
+    return fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes("/api/preguntar"),
+    );
+  }
+
+  function mockPreguntar(respuesta: Record<string, unknown>) {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+      return Promise.resolve(okResponse(respuesta));
+    });
+  }
+
   beforeEach(() => {
-    fetchMock = vi.fn();
+    fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+      return Promise.resolve(serverErrorResponse());
+    });
     vi.stubGlobal("fetch", fetchMock);
   });
 
@@ -65,13 +97,13 @@ describe("QuestionBox", () => {
   });
 
   describe("FR-020: pregunta vacía o solo espacios", () => {
-    it("no llama a fetch y muestra una validación en el campo", async () => {
+    it("no envía la pregunta y muestra una validación en el campo", async () => {
       const user = userEvent.setup();
       render(<QuestionBox />);
       const input = screen.getByLabelText(/pregunta/i);
       await user.type(input, "   ");
       await user.click(screen.getByRole("button", { name: /preguntar/i }));
-      expect(fetchMock).not.toHaveBeenCalled();
+      expect(preguntarCalls()).toHaveLength(0);
       expect(
         screen.getByText(/Escribí una pregunta para poder responder/i),
       ).toBeInTheDocument();
@@ -80,13 +112,13 @@ describe("QuestionBox", () => {
 
   describe("envío de una pregunta válida", () => {
     it("llama a POST /api/preguntar con body { pregunta } y headers JSON", async () => {
-      fetchMock.mockResolvedValue(okResponse(RESPUESTA_DIFERENCIA));
+      mockPreguntar(RESPUESTA_DIFERENCIA);
       const user = userEvent.setup();
       render(<QuestionBox />);
       await user.type(screen.getByLabelText(/pregunta/i), "¿Qué diferencia de votos hubo en 2001?");
       await user.click(screen.getByRole("button", { name: /preguntar/i }));
       await screen.findByText(/Agrupación A/);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(preguntarCalls()).toHaveLength(1);
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/preguntar",
         expect.objectContaining({
@@ -99,7 +131,11 @@ describe("QuestionBox", () => {
 
     it("deshabilita el botón y marca aria-busy mientras está pendiente; al resolverse muestra la respuesta", async () => {
       const deferred = createDeferred<Response>();
-      fetchMock.mockReturnValue(deferred.promise);
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+        return deferred.promise;
+      });
       const user = userEvent.setup();
       render(<QuestionBox />);
       const button = screen.getByRole("button", { name: /preguntar/i });
@@ -113,7 +149,7 @@ describe("QuestionBox", () => {
     });
 
     it("muestra la respuesta en una región role='status'", async () => {
-      fetchMock.mockResolvedValue(okResponse(RESPUESTA_DIFERENCIA));
+      mockPreguntar(RESPUESTA_DIFERENCIA);
       const user = userEvent.setup();
       render(<QuestionBox />);
       await user.type(screen.getByLabelText(/pregunta/i), "¿Qué diferencia de votos hubo en 2001?");
@@ -125,7 +161,7 @@ describe("QuestionBox", () => {
     });
 
     it("muestra la línea de interpretación cuando la respuesta la incluye", async () => {
-      fetchMock.mockResolvedValue(okResponse(RESPUESTA_DIFERENCIA));
+      mockPreguntar(RESPUESTA_DIFERENCIA);
       const user = userEvent.setup();
       render(<QuestionBox />);
       await user.type(screen.getByLabelText(/pregunta/i), "¿Qué diferencia de votos hubo en 2001?");
@@ -139,21 +175,25 @@ describe("QuestionBox", () => {
 
   describe("SC-006: cada envío reemplaza la respuesta anterior", () => {
     it("la segunda respuesta reemplaza a la primera sin acumular dos respuestas", async () => {
-      fetchMock
-        .mockResolvedValueOnce(
-          okResponse({
-            tipo: "respuesta",
-            texto: "Respuesta A: ganó «Agrupación A» en 2001.",
-            interpretacion: { anio: 2001, categoria: "ganador_eleccion", cargo: "intendente" },
-          }),
-        )
-        .mockResolvedValueOnce(
-          okResponse({
-            tipo: "respuesta",
-            texto: "Respuesta B: ganó «Agrupación B» en 2011.",
-            interpretacion: { anio: 2011, categoria: "ganador_eleccion", cargo: "intendente" },
-          }),
+      let n = 0;
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+        n += 1;
+        return Promise.resolve(
+          n === 1
+            ? okResponse({
+                tipo: "respuesta",
+                texto: "Respuesta A: ganó «Agrupación A» en 2001.",
+                interpretacion: { anio: 2001, categoria: "ganador_eleccion", cargo: "intendente" },
+              })
+            : okResponse({
+                tipo: "respuesta",
+                texto: "Respuesta B: ganó «Agrupación B» en 2011.",
+                interpretacion: { anio: 2011, categoria: "ganador_eleccion", cargo: "intendente" },
+              }),
         );
+      });
       const user = userEvent.setup();
       render(<QuestionBox />);
       const input = screen.getByLabelText(/pregunta/i);
@@ -172,7 +212,11 @@ describe("QuestionBox", () => {
 
   describe("manejo de errores", () => {
     it("muestra un mensaje amigable cuando fetch rechaza y el campo sigue usable", async () => {
-      fetchMock.mockRejectedValueOnce(new Error("network down"));
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+        return Promise.reject(new Error("network down"));
+      });
       const user = userEvent.setup();
       render(<QuestionBox />);
       const input = screen.getByLabelText(/pregunta/i);
@@ -180,13 +224,11 @@ describe("QuestionBox", () => {
       await user.click(screen.getByRole("button", { name: /preguntar/i }));
       expect(await screen.findByText(/Ocurrió un error/i)).toBeInTheDocument();
       expect(input).toBeEnabled();
-      fetchMock.mockResolvedValue(
-        okResponse({
-          tipo: "respuesta",
-          texto: "Recuperado: ganó «Agrupación A» en 2001.",
-          interpretacion: { anio: 2001, categoria: "ganador_eleccion", cargo: "intendente" },
-        }),
-      );
+      mockPreguntar({
+        tipo: "respuesta",
+        texto: "Recuperado: ganó «Agrupación A» en 2001.",
+        interpretacion: { anio: 2001, categoria: "ganador_eleccion", cargo: "intendente" },
+      });
       await user.clear(input);
       await user.type(input, "¿Quién ganó en 2001?");
       await user.click(screen.getByRole("button", { name: /preguntar/i }));
@@ -194,12 +236,50 @@ describe("QuestionBox", () => {
     });
 
     it("muestra un mensaje amigable cuando el servidor responde 500", async () => {
-      fetchMock.mockResolvedValueOnce(serverErrorResponse());
       const user = userEvent.setup();
       render(<QuestionBox />);
       await user.type(screen.getByLabelText(/pregunta/i), "¿Quién ganó en 2001?");
       await user.click(screen.getByRole("button", { name: /preguntar/i }));
       expect(await screen.findByText(/Volvé a intentar/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("FR-021: servicio de datos caído", () => {
+    it("deshabilita el cuadro y muestra un mensaje claro cuando /api/health responde 503", async () => {
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthDownResponse());
+        return Promise.resolve(serverErrorResponse());
+      });
+      const user = userEvent.setup();
+      render(<QuestionBox />);
+      const input = screen.getByLabelText(/pregunta/i);
+      const button = screen.getByRole("button", { name: /preguntar/i });
+      await waitFor(() => expect(input).toBeDisabled());
+      expect(button).toBeDisabled();
+      expect(
+        screen.getByText(/El servicio de datos no está disponible/i),
+      ).toBeInTheDocument();
+      await user.type(input, "¿Quién ganó en 2001?").catch(() => {});
+      await user.click(button).catch(() => {});
+      expect(preguntarCalls()).toHaveLength(0);
+    });
+
+    it("se rehabilita solo cuando /api/health vuelve a responder 200", async () => {
+      let healthCalls = 0;
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) {
+          healthCalls += 1;
+          return Promise.resolve(healthCalls === 1 ? healthDownResponse() : healthOkResponse());
+        }
+        return Promise.resolve(serverErrorResponse());
+      });
+      render(<QuestionBox />);
+      const input = screen.getByLabelText(/pregunta/i);
+      await waitFor(() => expect(input).toBeDisabled());
+      window.dispatchEvent(new Event("online"));
+      await waitFor(() => expect(input).toBeEnabled());
     });
   });
 });

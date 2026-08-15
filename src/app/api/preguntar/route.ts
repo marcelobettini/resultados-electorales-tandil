@@ -1,6 +1,16 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getInterpreter } from "@/lib/interpretacion/llm-interpreter";
+import { pingDb } from "@/lib/db";
+import {
+  esErrorLlm,
+  getInterpreter,
+} from "@/lib/interpretacion/llm-interpreter";
+import {
+  esErrorDeConexion,
+  isDbDegradado,
+  reportarExitoDb,
+  reportarFallaDb,
+} from "@/lib/seg/db-circuit";
 import {
   getRespuestaCacheada,
   setRespuestaCacheada,
@@ -36,6 +46,24 @@ const ERROR_RATE_LIMIT = {
     tipo: "demasiadas_preguntas",
     mensaje:
       "Estás enviando muchas preguntas. Esperá unos minutos y volvé a intentar.",
+  },
+} as const;
+
+const ERROR_INFRAESTRUCTURA = {
+  ok: false,
+  error: {
+    tipo: "error_infraestructura",
+    mensaje:
+      "La base de datos no está disponible en este momento. Volvé a intentar en unos minutos.",
+  },
+} as const;
+
+const ERROR_INTERPRETACION = {
+  ok: false,
+  error: {
+    tipo: "error_interpretacion",
+    mensaje:
+      "El servicio de interpretación no respondió. Volvé a intentar en unos minutos.",
   },
 } as const;
 
@@ -85,12 +113,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
+    if (isDbDegradado() || !(await pingDb())) {
+      return NextResponse.json(ERROR_INFRAESTRUCTURA, { status: 503 });
+    }
+
     const intento = await getInterpreter().interpretar(pregunta);
     const respuesta: Respuesta = await renderRespuesta(intento);
+    reportarExitoDb();
     setRespuestaCacheada(pregunta, respuesta);
 
     return NextResponse.json({ ok: true, respuesta });
-  } catch {
+  } catch (error) {
+    if (esErrorDeConexion(error)) {
+      reportarFallaDb(error);
+      return NextResponse.json(ERROR_INFRAESTRUCTURA, { status: 503 });
+    }
+    if (esErrorLlm(error)) {
+      return NextResponse.json(ERROR_INTERPRETACION, { status: 502 });
+    }
     return NextResponse.json(ERROR_SISTEMA, { status: 500 });
   }
 }

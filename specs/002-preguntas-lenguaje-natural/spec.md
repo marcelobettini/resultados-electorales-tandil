@@ -119,6 +119,7 @@ Una persona con discapacidad visual usa un lector de pantalla: el cuadro tiene u
 - **FR-018**: El sistema MUST devolver desde una memoria temporal la respuesta ya generada a preguntas idénticas o normalizadas equivalentes, sin reprocesarlas ni volver a consultar el servicio de interpretación.
 - **FR-019**: Las reglas de interpretación (vocabulario, categorías, ejemplos) MUST mantenerse en un único documento de referencia que es la fuente de verdad, del cual se construye la configuración del servicio de interpretación; cualquier cambio de reglas se hace en ese documento.
 - **FR-020**: Una pregunta vacía (o solo con espacios) MUST no enviarse; se muestra una validación en el campo pidiendo que se escriba la pregunta.
+- **FR-021**: Si el servicio de datos (base de datos) no está disponible, el sistema MUST degradarse de forma explícita y controlada: (a) el cuadro de pregunta MUST deshabilitarse con un mensaje claro ("el servicio de datos no está disponible"), anunciado en la región de estado, verificando la salud del servicio al montar, al enfocar el campo y periódicamente, y re-habilitarse solo al volver (mismo patrón que FR-015, aplicado a la BD); (b) el servidor MUST no consumir el servicio de interpretación mientras la falla sea reciente (circuito de degradación con TTL, half-open al expirar) y MUST verificar la conectividad a la BD antes de interpretar; (c) para requests que igual lleguen, responder un error diferenciado de infraestructura (`503 error_infraestructura`), nunca un error genérico ni una cifra inventada. El estado de la BD es consultable en `GET /api/health`.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -142,6 +143,7 @@ Una persona con discapacidad visual usa un lector de pantalla: el cuadro tiene u
 - **SC-008**: En modo sin conexión, el cuadro de pregunta queda deshabilitado con mensaje claro y el resto de la plataforma (histórico, tablas, PDFs) continúa funcionando sin regresión.
 - **SC-009**: Una pregunta repetida se responde desde la memoria temporal sin reprocesamiento, verificable en que la respuesta es idéntica y más rápida que el primer envío.
 - **SC-010**: Al incorporar una elección nueva al histórico, una pregunta sobre la "última elección" pasa a resolverla automáticamente sin intervención manual ni cambio de configuración.
+- **SC-011**: Con la base de datos caída, el sistema no llama al servicio de interpretación (verificable con `GET /api/health` → `503` y sin gasto de tokens): el cuadro de preguntas queda deshabilitado con mensaje claro y se rehabilita solo al volver la BD; cualquier request que igual llegue recibe `503 error_infraestructura`.
 
 ## Assumptions
 

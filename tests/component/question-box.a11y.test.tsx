@@ -42,6 +42,13 @@ function okResponse(respuesta: Respuesta): Response {
   });
 }
 
+function healthOkResponse(): Response {
+  return new Response(JSON.stringify({ ok: true, db: true }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 const RESPUESTA_OK: Respuesta = {
   tipo: "respuesta",
   texto: "El primer puesto fue «Agrupación A» con 21.000 votos.",
@@ -62,7 +69,22 @@ describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
   beforeEach(() => {
     document.documentElement.setAttribute("lang", "es");
     document.title = "Cuadro de preguntas sobre los resultados electorales";
-    fetchMock = vi.fn();
+    fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              tipo: "error_sistema",
+              mensaje: "Ocurrió un error al procesar tu pregunta. Volvé a intentar en unos minutos.",
+            },
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    });
     vi.stubGlobal("fetch", fetchMock);
   });
 
@@ -147,7 +169,11 @@ describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
 
   describe("4. estado error", () => {
     it("anuncia el error en role=alert y deja el campo utilizable; pasa axe", async () => {
-      fetchMock.mockRejectedValueOnce(new Error("network down"));
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+        return Promise.reject(new Error("network down"));
+      });
 
       const user = userEvent.setup();
       render(<QuestionBox />);
@@ -169,7 +195,11 @@ describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
     });
 
     it("mantiene la región de estado (role=status) presente para el próximo intento", async () => {
-      fetchMock.mockRejectedValueOnce(new Error("network down"));
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+        return Promise.reject(new Error("network down"));
+      });
 
       const user = userEvent.setup();
       render(<QuestionBox />);
@@ -221,6 +251,49 @@ describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
     );
   });
 
+  describe("6. servicio de datos caído (FR-021)", () => {
+    it("deshabilita el cuadro con mensaje claro y lo anuncia en role=status; pasa axe", async () => {
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ ok: false, db: false }), {
+              status: 503,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              ok: false,
+              error: { tipo: "error_infraestructura", mensaje: "Base no disponible" },
+            }),
+            { status: 503, headers: { "Content-Type": "application/json" } },
+          ),
+        );
+      });
+
+      const user = userEvent.setup();
+      render(<QuestionBox />);
+
+      const input = screen.getByLabelText(
+        /Hacé una pregunta sobre los resultados electorales/i,
+      );
+      const status = await screen.findByRole("status");
+      expect(
+        within(status).getByText(/El servicio de datos no está disponible/i),
+      ).toBeInTheDocument();
+      expect(input).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /preguntar/i }),
+      ).toBeDisabled();
+
+      await user.click(input).catch(() => {});
+      await expectAxeClean();
+    });
+  });
+
   describe("teclado (navegación y envío)", () => {
     it("el campo y el botón son alcanzables con Tab", async () => {
       const user = userEvent.setup();
@@ -236,7 +309,11 @@ describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
     });
 
     it("Enter en el campo envía la pregunta", async () => {
-      fetchMock.mockResolvedValue(okResponse(RESPUESTA_OK));
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/health")) return Promise.resolve(healthOkResponse());
+        return Promise.resolve(okResponse(RESPUESTA_OK));
+      });
 
       const user = userEvent.setup();
       render(<QuestionBox />);
@@ -246,7 +323,10 @@ describe("QuestionBox accesibilidad (axe + WCAG 2.2 AA)", () => {
         "¿Qué diferencia de votos hubo en 2001?{Enter}",
       );
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const preguntarCalls = fetchMock.mock.calls.filter((call) =>
+        String(call[0]).includes("/api/preguntar"),
+      );
+      expect(preguntarCalls).toHaveLength(1);
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/preguntar",
         expect.objectContaining({

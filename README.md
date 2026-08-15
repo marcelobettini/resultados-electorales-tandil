@@ -102,6 +102,12 @@ preguntas en español sobre el escrutinio definitivo a través de `POST /api/pre
   cargo, para que el ciudadano audite qué entendió el sistema.
 - **Rate limit + memoria temporal**: hasta 10 preguntas por minuto por visitante y caché LRU de
   respuestas idénticas en la instancia del servidor (repetir una pregunta se sirve sin reprocesar).
+- **Resiliencia ante caída de la BD (circuit breaker + health)**: el cuadro de preguntas verifica
+  `GET /api/health` (al montar, al enfocar y cada 30 s) y, si el servicio de datos está caído, se
+  **deshabilita solo** con el mensaje "El servicio de datos no está disponible…", re-habilitándose
+  cuando la BD vuelve. Como red de seguridad, el servidor corta antes de llamar al LLM (circuito de
+  degradación con TTL + `ping` pre-flight) y responde `503 error_infraestructura`; las fallas del
+  LLM responden `502 error_interpretacion` y el resto, `500 error_sistema`.
 - **WCAG 2.2 AA + offline**: los estados se anuncian con `role="status"`; sin conexión el cuadro se
   deshabilita con un mensaje claro sin afectar el resto de la plataforma.
 

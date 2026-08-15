@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { CSSProperties, FormEvent, JSX } from "react"
 import type { CategoriaId, Respuesta } from "@/lib/types"
 import { nombreLegible } from "@/lib/interpretacion/taxonomy"
@@ -14,6 +14,10 @@ const MENSAJE_ERROR =
   "Ocurrió un error al procesar tu pregunta. Volvé a intentar en unos minutos."
 const MENSAJE_OFFLINE =
   "Estás sin conexión. Volvé a conectarte para hacer una pregunta."
+const MENSAJE_SERVICIO =
+  "El servicio de datos no está disponible en este momento. Volvé a intentar en unos minutos."
+
+const HEALTH_POLL_MS = 30_000
 
 interface PreguntarResponse {
   ok: boolean
@@ -108,23 +112,40 @@ export default function QuestionBox(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [validacion, setValidacion] = useState<string | null>(null)
   const [offline, setOffline] = useState(false)
+  const [servicioCaido, setServicioCaido] = useState(false)
+
+  const checkServicio = useCallback(async () => {
+    if (typeof navigator === "undefined" || navigator.onLine === false) return
+    try {
+      const response = await fetch("/api/health", { cache: "no-store" })
+      setServicioCaido(!response.ok)
+    } catch {
+      // sin red: lo maneja el estado offline
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof navigator === "undefined") return
     const handleOffline = () => setOffline(true)
-    const handleOnline = () => setOffline(false)
+    const handleOnline = () => {
+      setOffline(false)
+      void checkServicio()
+    }
     setOffline(!navigator.onLine)
+    void checkServicio()
+    const intervalo = window.setInterval(() => void checkServicio(), HEALTH_POLL_MS)
     window.addEventListener("offline", handleOffline)
     window.addEventListener("online", handleOnline)
     return () => {
       window.removeEventListener("offline", handleOffline)
       window.removeEventListener("online", handleOnline)
+      window.clearInterval(intervalo)
     }
-  }, [])
+  }, [checkServicio])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (offline) return
+    if (offline || servicioCaido) return
     const texto = pregunta.trim()
     if (texto.length === 0) {
       setValidacion(MENSAJE_VALIDACION)
@@ -170,6 +191,7 @@ export default function QuestionBox(): JSX.Element {
   }
 
   const busy = pendiente ? "true" : undefined
+  const disabled = pendiente || offline || servicioCaido
   const interpretacion = respuesta?.interpretacion
 
   return (
@@ -191,10 +213,11 @@ export default function QuestionBox(): JSX.Element {
           setPregunta(event.target.value)
           if (validacion !== null) setValidacion(null)
         }}
+        onFocus={() => void checkServicio()}
         placeholder={PLACEHOLDER}
         aria-describedby={validacion !== null ? "pregunta-validacion" : undefined}
         aria-invalid={validacion !== null || undefined}
-        disabled={pendiente || offline}
+        disabled={disabled}
         autoComplete="off"
         style={inputStyle}
       />
@@ -207,20 +230,18 @@ export default function QuestionBox(): JSX.Element {
 
       <button
         type="submit"
-        disabled={pendiente || offline}
-        style={
-          pendiente || offline
-            ? { ...buttonStyle, ...buttonDisabledStyle }
-            : buttonStyle
-        }
+        disabled={disabled}
+        style={disabled ? { ...buttonStyle, ...buttonDisabledStyle } : buttonStyle}
       >
         Preguntar
       </button>
 
-      {(pendiente || respuesta !== null || error !== null || offline) && (
+      {(pendiente || respuesta !== null || error !== null || offline || servicioCaido) && (
         <div role="status" aria-busy={busy} style={statusStyle}>
           {offline ? (
             <p style={answerStyle}>{MENSAJE_OFFLINE}</p>
+          ) : servicioCaido ? (
+            <p style={answerStyle}>{MENSAJE_SERVICIO}</p>
           ) : pendiente ? (
             <p style={answerStyle}>Procesando tu pregunta…</p>
           ) : respuesta !== null ? (
