@@ -37,7 +37,7 @@ const labelStyle: CSSProperties = {
   display: "block",
   marginBottom: "0.7rem",
   fontFamily: "var(--font-plexmono)",
-  fontSize: "0.72rem",
+  fontSize: "0.76rem",
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.14em",
@@ -87,14 +87,14 @@ const answerStyle: CSSProperties = {
 const interpretationStyle: CSSProperties = {
   margin: "0.6rem 0 0",
   fontFamily: "var(--font-plexmono)",
-  fontSize: "0.78rem",
+  fontSize: "0.85rem",
   color: "var(--slate)",
 }
 
 const validationStyle: CSSProperties = {
   margin: "0.6rem 0 0",
   color: "#a3281f",
-  fontSize: "0.9rem",
+  fontSize: "0.95rem",
 }
 
 const errorStyle: CSSProperties = {
