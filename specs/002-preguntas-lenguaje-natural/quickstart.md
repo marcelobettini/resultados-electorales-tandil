@@ -16,6 +16,8 @@ Guía para validar de punta a punta el cuadro de preguntas en lenguaje natural. 
   - `ASK_INTERPRETER_MODE` — `live` (default) o `mock` (tests/dev sin gasto ni red).
   - `ASK_RATE_LIMIT_MAX` / `ASK_RATE_LIMIT_WINDOW_MS` — límite de ritmo (default 10 / 60 000).
   - `ASK_CACHE_TTL_MS` / `ASK_CACHE_MAX_ENTRIES` — memoria temporal (default 600 000 / 200).
+  - `DB_CONNECT_TIMEOUT_MS` — timeout de conexión al pool (default 2000 ms).
+  - `DB_CIRCUIT_TTL_MS` — ventana de degradación del circuito de BD (default 20 000 ms).
   - En `mock`, `LLM_API_KEY` puede estar vacía.
 
 ## Setup
@@ -91,8 +93,15 @@ Batería de preguntas fuera de alcance — cada una recibe su mensaje, **nunca**
 
 ### 8. Estados de error del sistema (FR-013)
 
-- Con el servicio de interpretación caído (o clave inválida en `live`) → estado claro de "error del sistema", sin respuestas vacías ni inventadas.
-- Con la BD caída → mismo tratamiento.
+- Con el servicio de interpretación caído (o clave inválida en `live`) → `502 error_interpretacion` con mensaje claro, sin respuestas vacías ni inventadas.
+
+### 8bis. Degradación por caída de la BD (FR-021, SC-011)
+
+- Detener MySQL → `curl -s -w '%{http_code}' http://localhost:3000/api/health` responde `503` con `db: false`.
+- Con la BD caída, el cuadro de preguntas se **deshabilita solo**: verifica `GET /api/health` al montar, al enfocar el campo y cada 30 s, y muestra "El servicio de datos no está disponible en este momento. Volvé a intentar en unos minutos." No se puede enviar ninguna pregunta.
+- Durante la caída el servidor **no recibe preguntas ni llama al LLM ni a la BD** (verificable en el log: sin requests a OpenAI ni queries a MySQL).
+- Volver a levantar MySQL → el cuadro se **rehabilita solo** (sin recargar la página, al re-verificar health) y las preguntas responden normal; `GET /api/health` vuelve a `200`.
+- Red de seguridad del servidor: si una request llega igual (cliente no web, `curl`), responde `503 error_infraestructura`.
 
 ## Criterios de éxito medibles (resumen)
 
@@ -105,3 +114,4 @@ Batería de preguntas fuera de alcance — cada una recibe su mensaje, **nunca**
 - Offline: cuadro deshabilitado, resto intacto (SC-008).
 - Pregunta repetida servida desde memoria sin reprocesar (SC-009).
 - Elección nueva → "última elección" la resuelve sola (SC-010).
+- BD caída → cuadro deshabilitado con mensaje claro y re-habilitación automática; sin consumo de LLM (SC-011).

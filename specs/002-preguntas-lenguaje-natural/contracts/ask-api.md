@@ -63,20 +63,24 @@ En todos los casos la respuesta **nunca** contiene una cifra fabricada; si no ha
 |---|---|---|
 | 400 | `{ "ok": false, "error": { "tipo": "pregunta_vacia", "mensaje": "Escribí una pregunta para poder responder." } }` | Pregunta vacía/solo espacios (FR-020) o excede la longitud máxima. |
 | 429 | `{ "ok": false, "error": { "tipo": "demasiadas_preguntas", "mensaje": "Estás enviando muchas preguntas. Esperá unos minutos y volvé a intentar." } }` | Límite de ritmo superado (FR-017, sliding window por IP). |
-| 500 | `{ "ok": false, "error": { "tipo": "error_sistema", "mensaje": "Ocurrió un error al procesar tu pregunta. Volvé a intentar en unos minutos." } }` | Falla del servicio de interpretación, de la base o de renderizado. Sin respuestas vacías ni inventadas (edge case, FR-013). |
+| 502 | `{ "ok": false, "error": { "tipo": "error_interpretacion", "mensaje": "El servicio de interpretación no respondió. Volvé a intentar en unos minutos." } }` | Falla del servicio externo de interpretación (LLM), agotados los reintentos. No se inventa respuesta. |
+| 503 | `{ "ok": false, "error": { "tipo": "error_infraestructura", "mensaje": "La base de datos no está disponible en este momento. Volvé a intentar en unos minutos." } }` | Base de datos no disponible. Es la **red de seguridad del servidor**: el cliente deshabilita el cuadro antes de enviar (FR-021) y solo se devuelve para requests que igual lleguen, sin llamar al LLM mientras el circuito está abierto. |
+| 500 | `{ "ok": false, "error": { "tipo": "error_sistema", "mensaje": "Ocurrió un error al procesar tu pregunta. Volvé a intentar en unos minutos." } }` | Falla de renderizado o cualquier otro error no clasificado (edge case, FR-013). |
 
 ## Semántica de procesamiento (orden de servidor)
 
 1. **Validación de forma**: `pregunta` no vacía y ≤ 280 chars → 400.
 2. **Rate limit** (sliding window por IP): excedido → 429, sin tocar el LLM.
-3. **Memoria temporal**: hash del normalizado de la pregunta → si hay entrada vigente, responder `desde_cache: true` sin reprocesar.
-4. **Interpretación**: llamada al LLM (structured outputs) → `IntentoConsulta`.
-5. **Resolución/ejecución**: año (`MAX(anio)` si "última elección"), consulta del catálogo (SQL parametrizado), plantilla determinística.
-6. **Respuesta**: renderizar `Respuesta` y guardarla en la memoria temporal.
+3. **Memoria temporal**: hash del normalizado de la pregunta → si hay entrada vigente, responder `desde_cache: true` sin reprocesar. Esto también vale mientras la BD esté degradada.
+4. **Circuito + pre-flight de BD (FR-021)**: si la BD está marcada como degradada (falla de conexión reciente dentro de `DB_CIRCUIT_TTL_MS`), **no se llama al LLM** ni se pinguea: responder 503. Si el circuito está cerrado, se verifica la conectividad con un `ping` liviano (pool MySQL): si falla se abre el circuito y se responde 503 **antes de interpretar**; esto aplica también a preguntas que no requieren datos (fuera de alcance, no entendida), para no responder de forma engañosa con la BD caída. **Nota de cliente (FR-021)**: el componente de la portada consulta `GET /api/health` (al montar, al enfocar y periódicamente) y deshabilita el cuadro con un mensaje claro cuando responde `503`, re-habilitándolo solo al recuperarse; por lo tanto, este paso 503 del servidor es una red de seguridad para requests que igual lleguen.
+5. **Interpretación**: llamada al LLM (structured outputs) → `IntentoConsulta`. Falla del LLM agotados los reintentos → 502.
+6. **Resolución/ejecución**: año (`MAX(anio)` si "última elección"), consulta del catálogo (SQL parametrizado), plantilla determinística. Falla de conexión a la BD → se abre el circuito (reporta degradación) y 503.
+7. **Respuesta**: renderizar `Respuesta`, guardarla en la memoria temporal y cerrar el circuito (la BD volvió a responder).
 
 ## Verificación
 
 - `curl -s -X POST <host>/api/preguntar -H 'Content-Type: application/json' -d '{"pregunta":"¿Quién ganó la última elección?"}'` → `200` con `tipo: respuesta` e `interpretacion.anio` = año más reciente.
 - Repetir la misma pregunta → `200` con `desde_cache: true`.
 - Enviar 11 preguntas seguidas desde la misma IP → la 11.ª devuelve `429`.
-- Pregunta vacía → `400`; con LLM caído (o `ASK_INTERPRETER_MODE` en fallback) → `500 error_sistema`.
+- Pregunta vacía → `400`; con LLM caído (o `ASK_INTERPRETER_MODE` en fallback) → `502 error_interpretacion`.
+- **Con la BD caída** (`curl -s -w '%{http_code}' http://<host>/api/health` → `503`): cualquier pregunta (aun fuera de alcance o confusa) → `503 error_infraestructura` sin consumo de LLM. Al volver la BD, la primera pregunta reabre el circuito (half-open) y responde normal.

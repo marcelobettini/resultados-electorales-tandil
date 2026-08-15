@@ -14,11 +14,15 @@ const SEED = 42;
 const ESPERA_RETRY_MS = 500;
 const TIMEOUT_FETCH_MS = 15_000;
 
-class LlmError extends Error {
+export class LlmError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
     this.name = "LlmError";
   }
+}
+
+export function esErrorLlm(error: unknown): boolean {
+  return error instanceof LlmError;
 }
 
 function puedeReintentar(error: LlmError): boolean {
