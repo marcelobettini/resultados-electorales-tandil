@@ -1,9 +1,17 @@
 <!--
 Sync Impact Report
-- Version: template sin ratificar → 1.0.0 (ratificación inicial; todos los placeholders llenados)
-- Principios modificados: N/A (sin versiones previas; primera redacción)
-- Secciones agregadas: Principios Fundamentales (6), Contrato de Datos y Fuente de Verdad,
-  Comportamiento y UX, Arquitectura y Despliegue, Gobernanza
+- Version: 1.0.0 → 2.0.0 (MAJOR: redefinición del Principio I — se relaja la prohibición
+  absoluta de comparación cross-elección para permitir una excepción acotada)
+- Principios modificados:
+  - Principio I: se agrega excepción explícita — SÍ se permite comparar la trayectoria de una
+    misma PERSONA electa (identificada por nombre y apellido exactos, con desambiguación de
+    homónimos) a través de distintas elecciones, mostrando cargo, partido/frente, lista y
+    votos/porcentaje por elección. La prohibición de series históricas se mantiene para
+    partidos/frentes (su identidad cambia de nombre y composición entre elecciones; la de una
+    persona física no).
+- Secciones modificadas: Comportamiento y UX (navegación cross-elección: excepción para
+  trayectoria de persona electa); Gobernanza (aclaración del gate #1)
+- Secciones agregadas: N/A
 - Secciones eliminadas: N/A
 - TODOs pendientes: N/A
 -->
@@ -24,10 +32,21 @@ escrutinio definitivo cerrado. -->
   "mesas escrutadas" es informativo (normalmente 100%).
 - Histórico 1963 → actualidad. Los años sin elecciones (1966–1973, 1976–1983) se omiten de la
   línea de tiempo.
-- Comparación SOLO dentro de una misma elección (partidos entre sí en 2023). PROHIBIDAS series
-  históricas de un partido a través de años: frentes y alianzas cambian de nombre y composición,
-  y esa comparación no sería representativa.
-- Razón: garantizar comparabilidad y evitar interpretaciones no representativas.
+- Comparación SOLO dentro de una misma elección para partidos/frentes (partidos entre sí en
+  2023). PROHIBIDAS series históricas de un partido/frente a través de años: frentes y alianzas
+  cambian de nombre y composición, y esa comparación no sería representativa.
+- EXCEPCIÓN — trayectoria de una persona electa: SÍ se permite comparar a una misma PERSONA
+  (no partido/frente) a través de distintas elecciones en las que resultó electa, mostrando por
+  cada elección: cargo, partido/frente, lista (orden en la boleta) y votos/porcentaje obtenidos.
+  Solo aplica a personas electas (no a candidaturas no electas). La persona se identifica por
+  coincidencia EXACTA de nombre y apellido; ante homónimos (mismo nombre y apellido
+  correspondiente a personas distintas) el sistema debe advertirlo y pedir a quien consulta que
+  reformule para desambiguar, y nunca debe fusionar silenciosamente resultados de personas
+  distintas en una misma trayectoria.
+- Razón: garantizar comparabilidad y evitar interpretaciones no representativas. La prohibición de
+  series históricas aplica a partidos/frentes porque su identidad cambia de nombre y composición
+  entre elecciones; una persona física no tiene ese problema, por lo que su trayectoria
+  (cargo, partido/frente, lista, resultado) sí es una comparación representativa.
 
 ### II. Resultado oficial definitivo, sin cómputo en la plataforma
 - La plataforma NO calcula nada: votos, porcentajes y bancas vienen PRECALCULADOS en la BD.
@@ -84,7 +103,10 @@ escrutinio definitivo cerrado. -->
   donut, bancas); y personas electas agrupadas por partido/frente.
 - Solo se muestran los cargos que se eligieron en esa elección (hay años sin elección de
   Intendente).
-- Navegación: lista cronológica simple de elecciones. Sin búsqueda cross-elección.
+- Navegación: lista cronológica simple de elecciones. Sin búsqueda cross-elección de
+  partidos/frentes. EXCEPCIÓN (ver Principio I): se permite consultar la trayectoria de una
+  persona electa a través de elecciones, identificada por nombre y apellido exactos, con aviso y
+  pedido de reformulación ante homónimos.
 - PWA responsive. Los gráficos son complementarios y requieren alternativa textual; las tablas son
   la fuente de verdad (WCAG 2.2 AA).
 
@@ -107,9 +129,10 @@ escrutinio definitivo cerrado. -->
 - Fuera de alcance (NO modelar como features en el spec): panel de carga/administración de datos,
   ingesta/OCR de documentos, validación de los PDFs y almacenamiento de los archivos PDF originales.
 - Requisitos no negociables que deben quedar como gates del spec: (1) alcance local exclusivo de
-  Tandil, una sola elección a la vez; (2) resultado oficial definitivo, sin cómputo en la
-  plataforma; (3) fuente de verdad = documento oficial de la Junta Electoral; (4) extensibilidad
-  sin cambios estructurales; (5) acceso 100% público sin autenticación; (6) WCAG 2.2 AA en toda la
-  UI.
+  Tandil, una sola elección a la vez para comparaciones de partidos/frentes (excepción acotada:
+  trayectoria de una persona electa entre elecciones, ver Principio I); (2) resultado oficial
+  definitivo, sin cómputo en la plataforma; (3) fuente de verdad = documento oficial de la Junta
+  Electoral; (4) extensibilidad sin cambios estructurales; (5) acceso 100% público sin
+  autenticación; (6) WCAG 2.2 AA en toda la UI.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-08
+**Version**: 2.0.0 | **Ratified**: 2026-08-08 | **Last Amended**: 2026-08-18
